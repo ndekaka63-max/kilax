@@ -2,16 +2,17 @@ import { supabase, supabaseAdmin } from './supabase';
 
 export class MakyPayService {
   private static readonly BASE_URL = 'https://wire-api.makylegacy.com/api/v1';
-  private static readonly AUTH_HEADER = process.env.MAKYPAY_BASE64_AUTH || '';
-  private static readonly API_KEY = process.env.MAKYPAY_API_KEY || '';
-  private static readonly API_SECRET = process.env.MAKYPAY_API_SECRET || '';
 
   private static getAuthHeader(): string {
-    if (this.AUTH_HEADER) return `Basic ${this.AUTH_HEADER}`;
-    if (this.API_KEY && this.API_SECRET) {
-      return `Basic ${Buffer.from(`${this.API_KEY}:${this.API_SECRET}`).toString('base64')}`;
+    const authHeader = process.env.MAKYPAY_BASE64_AUTH;
+    if (authHeader) return `Basic ${authHeader}`;
+
+    const apiKey = process.env.MAKYPAY_API_KEY;
+    const apiSecret = process.env.MAKYPAY_API_SECRET;
+    if (apiKey && apiSecret) {
+      return `Basic ${Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')}`;
     }
-    throw new MakyPayException('MakyPay credentials not configured');
+    throw new MakyPayException('MakyPay credentials not configured. Please set MAKYPAY_BASE64_AUTH or MAKYPAY_API_KEY and MAKYPAY_API_SECRET in environment variables.');
   }
 
   private static async request<T>(
