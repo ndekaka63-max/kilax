@@ -98,31 +98,45 @@ export function verifyVideoToken(token: string): {
  */
 export function checkReferrer(
   referrer: string | null,
-  allowedDomains: string[] = []
+  allowedDomains: string[] = [],
+  requestHost?: string | null
 ): boolean {
-  // If no referrer, reject (prevents direct access)
-  if (!referrer) {
-    return false;
+  // Allow development environment
+  if (process.env.NODE_ENV === 'development') {
+    if (!referrer) return true;
   }
-  
-  // Default allowed domains (add your production domains)
-  const defaultAllowedDomains = [
-    'localhost',
-    '127.0.0.1',
-    process.env.NEXT_PUBLIC_APP_DOMAIN || 'streamit.com',
-    process.env.NEXT_PUBLIC_VERCEL_URL || '',
-  ].filter(Boolean);
-  
-  const domainsToCheck = [...defaultAllowedDomains, ...allowedDomains];
-  
+
+  // If no referrer present (e.g. browser video tag range requests)
+  if (!referrer) {
+    return true;
+  }
+
   try {
     const referrerUrl = new URL(referrer);
-    const referrerHost = referrerUrl.hostname;
-    
-    // Check if referrer matches any allowed domain
-    return domainsToCheck.some(domain => 
-      referrerHost === domain || referrerHost.endsWith(`.${domain}`)
-    );
+    const referrerHost = referrerUrl.hostname.toLowerCase();
+
+    // If referrer host matches the request host (same origin request)
+    if (requestHost) {
+      const cleanedReqHost = requestHost.split(':')[0].toLowerCase();
+      if (referrerHost === cleanedReqHost || referrerHost.endsWith(`.${cleanedReqHost}`)) {
+        return true;
+      }
+    }
+
+    const defaultAllowedDomains = [
+      'localhost',
+      '127.0.0.1',
+      process.env.NEXT_PUBLIC_APP_DOMAIN || '',
+      process.env.NEXT_PUBLIC_VERCEL_URL || '',
+      process.env.VERCEL_URL || '',
+    ].filter(Boolean);
+
+    const domainsToCheck = [...defaultAllowedDomains, ...allowedDomains];
+
+    return domainsToCheck.some(domain => {
+      const cleanDomain = domain.replace(/^https?:\/\//, '').split('/')[0].split(':')[0].toLowerCase();
+      return referrerHost === cleanDomain || referrerHost.endsWith(`.${cleanDomain}`);
+    });
   } catch (error) {
     return false;
   }
@@ -215,10 +229,11 @@ export async function protectVideoEndpoint(request: Request): Promise<{
 }> {
   const headers = request.headers;
   const url = new URL(request.url);
+  const host = headers.get('host') || headers.get('x-forwarded-host');
   
   // 1. Check referrer
   const referrer = headers.get('referer') || headers.get('referrer');
-  if (!checkReferrer(referrer)) {
+  if (!checkReferrer(referrer, [], host)) {
     return { allowed: false, error: 'Invalid referrer' };
   }
   

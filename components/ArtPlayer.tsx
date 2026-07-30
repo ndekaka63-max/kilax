@@ -173,6 +173,7 @@ export function ArtPlayer({ url, poster, title, className, onEnded, episodes = [
     // Add error handling
     art.on('error', (error) => {
       console.error('ArtPlayer error:', { error, url: authenticatedUrl })
+      setAuthError('Video stream failed to load. Please verify your connection or refresh the page.')
     })
 
     art.on('ready', () => {

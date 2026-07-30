@@ -64,8 +64,13 @@ export function normalizeVideoUrl(url: string): string {
     return url
   }
 
+  // Already proxied or is an iframe embed URL
+  if (url.startsWith('/api/stream') || url.includes('embed.reelplexi.com')) {
+    return url
+  }
+
   let fullUrl = url
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+  if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/')) {
     fullUrl = `https://${url}`
   }
 

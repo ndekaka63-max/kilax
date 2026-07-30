@@ -108,8 +108,12 @@ export async function GET(request: NextRequest) {
     const range = request.headers.get('range');
     const upstreamHeaders: Record<string, string> = {};
 
-    // SECURITY: Only attach auth credentials when URL is on an allowed host
-    if (username && password && isAllowedVideoUrl(videoUrl)) {
+    // SECURITY: Only attach Caddy basic auth credentials if the target URL does NOT already use token/S3 signatures
+    const hasTokenOrSignature = /[?&](token|Signature|X-Amz-Signature|key)=/i.test(videoUrl) ||
+      videoUrl.includes('reelplexi.com') ||
+      videoUrl.includes('wasabisys.com');
+
+    if (username && password && !hasTokenOrSignature && isAllowedVideoUrl(videoUrl)) {
       const encodedCredentials = btoa(`${username}:${password}`);
       upstreamHeaders['Authorization'] = `Basic ${encodedCredentials}`;
     }

@@ -238,14 +238,11 @@ export default function PlayerContent() {
 
         // Route the URL to the correct player path:
         // 1. embed.reelplexi.com → iframe (X-Frame-Options permitting)
-        // 2. Direct HTTPS URLs (Reelplexi proxy, CDN, etc.) → ArtPlayer directly, no double-proxy
-        // 3. Everything else (relative, non-http) → our /api/stream wrapper
+        // 2. Direct Video Stream URLs → route through /api/stream proxy to prevent CORS errors
         if (videoUrl.includes('embed.reelplexi.com')) {
           setStreamUrl(videoUrl); // Iframe player
-        } else if (videoUrl.startsWith('https://') || videoUrl.startsWith('http://')) {
-          setStreamUrl(videoUrl); // Direct video URL → ArtPlayer, skip our proxy
         } else {
-          setStreamUrl(normalizeVideoUrl(videoUrl)); // Wrap relative/unknown URLs in our proxy
+          setStreamUrl(normalizeVideoUrl(videoUrl)); // Route through /api/stream proxy to handle CORS and authentication
         }
         setTitle(contentTitle);
         setLoading(false);
@@ -381,10 +378,8 @@ export default function PlayerContent() {
       // Update stream URL and title - same routing logic as main player
       if (videoUrl.includes('embed.reelplexi.com')) {
         setStreamUrl(videoUrl); // Iframe player
-      } else if (videoUrl.startsWith('https://') || videoUrl.startsWith('http://')) {
-        setStreamUrl(videoUrl); // Direct video URL → ArtPlayer, no double-proxy
       } else {
-        setStreamUrl(normalizeVideoUrl(videoUrl)); // Wrap relative/unknown URLs in our proxy
+        setStreamUrl(normalizeVideoUrl(videoUrl)); // Route through /api/stream proxy to handle CORS and authentication
       }
       setTitle(`${contentData?.title || 'Series'} - ${episode.seasonName} - ${episode.title}`);
       setSwitchingEpisode(false);
