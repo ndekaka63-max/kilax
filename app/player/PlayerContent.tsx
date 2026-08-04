@@ -11,7 +11,6 @@ import { useAuth } from '@/components/AuthProvider';
 import AuthRequiredModal, { useAuthCheck } from '@/components/AuthRequiredModal';
 import { getProfile, Profile } from '@/lib/profiles';
 import { Episode, EpisodeWithSeason } from '@/lib/supabase';
-import { normalizeVideoUrl } from '@/lib/utils';
 
 export default function PlayerContent() {
   const searchParams = useSearchParams();
@@ -30,8 +29,23 @@ export default function PlayerContent() {
   const [switchingEpisode, setSwitchingEpisode] = useState(false);
   const streamFetchedRef = useRef<string | null>(null);
 
-  const { user, loading: authLoading, isPremium } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { checkAuth } = useAuthCheck();
+
+  const buildStreamProxyUrl = (videoUrl: string) => {
+    let rawUrl = videoUrl;
+    try {
+      rawUrl = decodeURIComponent(videoUrl);
+    } catch {
+      rawUrl = videoUrl;
+    }
+
+    if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+      rawUrl = `https://${rawUrl}`;
+    }
+
+    return `/api/stream?url=${encodeURIComponent(rawUrl)}`;
+  };
 
   // Preload next episode for faster switching
   const preloadNextEpisode = useCallback(() => {
@@ -42,10 +56,8 @@ export default function PlayerContent() {
         const preloadVideo = document.createElement('video');
         preloadVideo.preload = 'metadata';
 
-        // Preload next episode directly
-        let preloadUrl = nextEpisode.video_url;
-        const normalizedUrl = normalizeVideoUrl(preloadUrl);
-        preloadVideo.src = preloadUrl;
+        // Preload using the same authenticated proxy path as the main player.
+        preloadVideo.src = buildStreamProxyUrl(nextEpisode.video_url);
         preloadVideo.style.display = 'none';
         document.body.appendChild(preloadVideo);
 
@@ -204,9 +216,10 @@ export default function PlayerContent() {
           throw new Error('No video URL available');
         }
 
-        // Route through server-side proxy so Basic Auth is added server-side
-        const normalizedUrl = normalizeVideoUrl(videoUrl);
-        const proxyUrl = `/api/stream?url=${encodeURIComponent(normalizedUrl)}`;
+        // Route through server-side proxy so Basic Auth is added server-side.
+        // Fully decode first to avoid double-encoding (%20 -> %2520) before
+        // passing to encodeURIComponent.
+        const proxyUrl = buildStreamProxyUrl(videoUrl);
         streamFetchedRef.current = fetchKey;
         setStreamUrl(proxyUrl);
         setTitle(contentTitle);
@@ -333,9 +346,7 @@ export default function PlayerContent() {
       window.history.replaceState({}, '', newUrl);
 
       // Process video URL through server-side proxy
-      let videoUrl = episode.video_url;
-      const normalizedUrl = normalizeVideoUrl(videoUrl);
-      const streamUrl = `/api/stream?url=${encodeURIComponent(normalizedUrl)}`;
+      const streamUrl = buildStreamProxyUrl(episode.video_url);
 
       // Update current episode index
       const newIndex = allEpisodes.findIndex(ep => ep.id === episode.id);

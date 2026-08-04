@@ -1,5 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Normalise a video URL so that path segments are properly percent-encoded
+ * exactly once, regardless of whether the stored URL already has %20 or
+ * literal spaces. This prevents the double-encoding bug (%2520) that occurs
+ * when encodeURIComponent is applied to a URL that already contains %XX.
+ */
+function normalizeUpstreamUrl(raw: string): string {
+  try {
+    // Fully decode first so we start from a clean, unencoded state
+    const decoded = decodeURIComponent(raw);
+    const u = new URL(decoded);
+    // Re-encode each path segment individually (encodeURIComponent encodes
+    // spaces → %20 and other special chars, but leaves / intact via join)
+    const encodedPath = u.pathname
+      .split('/')
+      .map(seg => encodeURIComponent(decodeURIComponent(seg)))
+      .join('/');
+    return `${u.protocol}//${u.host}${encodedPath}${u.search}`;
+  } catch {
+    return raw;
+  }
+}
+
+function getMimeTypeFromUrl(urlString: string): string | null {
+  try {
+    const pathname = new URL(urlString).pathname.toLowerCase();
+
+    if (pathname.endsWith('.m3u8')) return 'application/vnd.apple.mpegurl';
+    if (pathname.endsWith('.mpd')) return 'application/dash+xml';
+    if (pathname.endsWith('.webm')) return 'video/webm';
+    if (pathname.endsWith('.mkv')) return 'video/x-matroska';
+    if (pathname.endsWith('.mov')) return 'video/quicktime';
+    if (pathname.endsWith('.mp4')) return 'video/mp4';
+    if (pathname.endsWith('.m4v')) return 'video/mp4';
+    if (pathname.endsWith('.avi')) return 'video/x-msvideo';
+    if (pathname.endsWith('.flv')) return 'video/x-flv';
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -7,16 +49,14 @@ export async function GET(request: NextRequest) {
     const filename = searchParams.get('filename');
 
     if (!videoUrl) {
-      console.error('Stream API: No video URL provided');
       return NextResponse.json({ error: 'Video URL is required' }, { status: 400 });
     }
 
-    console.log('Stream API: Processing URL:', videoUrl);
+    const fetchUrl = normalizeUpstreamUrl(videoUrl);
 
-    // Use consistent environment variables with components
-    const username = process.env.VIDEO_AUTH_USERNAME || process.env.CADDY_USERNAME || process.env.NEXT_PUBLIC_CADDY_USERNAME || "mat";
-    const password = process.env.VIDEO_AUTH_PASSWORD || process.env.CADDY_PASSWORD || process.env.NEXT_PUBLIC_CADDY_PASSWORD || "MatTh3pAR";
-    const encodedCredentials = btoa(`${username}:${password}`);
+    const username = process.env.VIDEO_AUTH_USERNAME || process.env.CADDY_USERNAME || 'mat';
+    const password = process.env.VIDEO_AUTH_PASSWORD || process.env.CADDY_PASSWORD || 'MatTh3pAR';
+    const encodedCredentials = Buffer.from(`${username}:${password}`, 'utf8').toString('base64');
 
     const range = request.headers.get('range');
     const upstreamHeaders: Record<string, string> = {
@@ -27,8 +67,7 @@ export async function GET(request: NextRequest) {
       upstreamHeaders['Range'] = range;
     }
 
-    console.log('Stream API: Fetching from upstream with auth');
-    const videoResponse = await fetch(videoUrl, {
+    const videoResponse = await fetch(fetchUrl, {
       headers: upstreamHeaders
     });
 
@@ -37,12 +76,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         error: 'Video fetch failed',
         status: videoResponse.status,
-        statusText: videoResponse.statusText,
-        url: videoUrl
+        statusText: videoResponse.statusText
       }, { status: videoResponse.status });
     }
 
-    const contentType = videoResponse.headers.get('content-type') || 'video/mp4';
+    const contentType = videoResponse.headers.get('content-type') || getMimeTypeFromUrl(fetchUrl) || 'video/mp4';
     const contentLength = videoResponse.headers.get('content-length');
     const contentRange = videoResponse.headers.get('content-range');
     const acceptRanges = videoResponse.headers.get('accept-ranges');
@@ -82,7 +120,7 @@ export async function GET(request: NextRequest) {
       responseHeaders.set('Accept-Ranges', 'bytes');
     }
 
-    console.log('Stream API: Successfully proxying video stream');
+    console.log('Stream API: Proxying stream, status:', videoResponse.status);
     return new NextResponse(videoResponse.body, {
       status: videoResponse.status,
       headers: responseHeaders
