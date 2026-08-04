@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import VideoPlayer from '@/components/VideoPlayer';
 import { ArrowLeft, AlertCircle, ChevronLeft, ChevronRight, Play } from 'lucide-react';
@@ -28,6 +28,7 @@ export default function PlayerContent() {
   const [showNextEpisodePrompt, setShowNextEpisodePrompt] = useState(false);
   const [seriesId, setSeriesId] = useState<string | null>(null);
   const [switchingEpisode, setSwitchingEpisode] = useState(false);
+  const streamFetchedRef = useRef<string | null>(null);
 
   const { user, loading: authLoading, isPremium } = useAuth();
   const { checkAuth } = useAuthCheck();
@@ -85,6 +86,11 @@ export default function PlayerContent() {
 
       // Wait for auth to load
       if (authLoading) {
+        return;
+      }
+
+      const fetchKey = `${contentId}-${contentType}-${episodeId ?? 'none'}`;
+      if (streamFetchedRef.current === fetchKey) {
         return;
       }
 
@@ -200,8 +206,9 @@ export default function PlayerContent() {
 
         // Route through server-side proxy so Basic Auth is added server-side
         const normalizedUrl = normalizeVideoUrl(videoUrl);
-        const streamUrl = `/api/stream?url=${encodeURIComponent(normalizedUrl)}`;
-        setStreamUrl(streamUrl);
+        const proxyUrl = `/api/stream?url=${encodeURIComponent(normalizedUrl)}`;
+        streamFetchedRef.current = fetchKey;
+        setStreamUrl(proxyUrl);
         setTitle(contentTitle);
         setLoading(false);
 
@@ -213,7 +220,7 @@ export default function PlayerContent() {
     };
 
     fetchStreamUrl();
-  }, [contentId, contentType, episodeId, user, authLoading, isPremium]);
+  }, [contentId, contentType, episodeId, user?.id, authLoading]);
 
   // Fetch all episodes for navigation
   const fetchAllEpisodes = async (seriesId: string, currentEpisodeId: string) => {

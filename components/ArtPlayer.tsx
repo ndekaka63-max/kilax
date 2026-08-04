@@ -1,10 +1,9 @@
 "use client"
 
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useRef, useState } from "react"
 import Artplayer from "artplayer"
 import { isIOSDevice, canStreamMKV } from "@/lib/device-utils"
 import { EpisodeWithSeason } from '@/lib/supabase'
-import { useAuth } from './AuthProvider'
 import { useAuthCheck } from './AuthRequiredModal'
 
 interface ArtPlayerProps {
@@ -29,9 +28,12 @@ export function ArtPlayer({ url, poster, title, className, onEnded, episodes = [
   const [authError, setAuthError] = useState<string | null>(null)
   const blobUrlRef = useRef<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [currentUrl, setCurrentUrl] = useState<string | null>(null)
   const [showEpisodesOverlay, setShowEpisodesOverlay] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Refs for callbacks — prevents player re-init when only callbacks change
+  const onEndedRef = useRef(onEnded)
+  onEndedRef.current = onEnded
 
   const { checkAuth } = useAuthCheck()
 
@@ -54,14 +56,6 @@ export function ArtPlayer({ url, poster, title, className, onEnded, episodes = [
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showEpisodesOverlay, contentType, episodes.length]);
 
-  // Stabilize the onEnded callback
-  const stableOnEnded = useCallback(() => {
-    if (onEnded) {
-      onEnded();
-    }
-  }, [onEnded]);
-
-  // The keyboard handling is now managed by the useEpisodeNavigation hook
 
   useEffect(() => {
     const fetchUrl = async () => {
@@ -126,9 +120,6 @@ export function ArtPlayer({ url, poster, title, className, onEnded, episodes = [
       return
     }
 
-    console.log('Initializing ArtPlayer with URL:', authenticatedUrl)
-    console.log('Previous URL was:', currentUrl)
-
     // Always destroy the previous player when URL changes
     if (playerRef.current) {
       try {
@@ -140,9 +131,6 @@ export function ArtPlayer({ url, poster, title, className, onEnded, episodes = [
       }
       playerRef.current = null
     }
-
-    // Update current URL tracking
-    setCurrentUrl(authenticatedUrl)
 
     const art = new Artplayer({
       container: artRef.current,
@@ -324,7 +312,7 @@ export function ArtPlayer({ url, poster, title, className, onEnded, episodes = [
 
     // Handle video ended event
     art.on('video:ended', () => {
-      onEnded?.()
+      onEndedRef.current?.()
     })
 
     // Handle fullscreen events for auto-rotation
@@ -481,69 +469,36 @@ export function ArtPlayer({ url, poster, title, className, onEnded, episodes = [
     playerRef.current = art
 
     return () => {
-      // Remove orientation change listeners
       if (typeof window !== 'undefined') {
-        // Modern API
         if ('screen' in window && 'orientation' in window.screen) {
           window.screen.orientation?.removeEventListener('change', handleOrientationChange)
         }
-
-        // Legacy API
         window.removeEventListener('orientationchange', handleOrientationChange)
-
-        // Resize events
         window.removeEventListener('resize', handleOrientationChange)
       }
 
       if (art && typeof art.destroy === 'function') {
-        try {
-          art.destroy(false)
-        } catch (e) {
-          console.log('Error destroying player on cleanup:', e)
-        }
+        try { art.destroy(false) } catch (e) {}
       }
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current)
         blobUrlRef.current = null
       }
 
-      // Ensure orientation is unlocked on cleanup
       if (typeof window !== 'undefined') {
-        // Restore scroll
         document.body.style.overflow = 'auto'
-
         if ('screen' in window && 'orientation' in window.screen) {
-          try {
-            const orientation = window.screen.orientation as any;
-            if (orientation && typeof orientation.unlock === 'function') {
-              orientation.unlock()
-            }
-          } catch (e) {
-            console.log('Cleanup orientation unlock failed:', e)
-          }
+          try { (window.screen.orientation as any).unlock?.() } catch (e) {}
         }
-
-        // Also try the older APIs
         if ('unlockOrientation' in screen) {
-          try {
-            (screen as any).unlockOrientation()
-          } catch (e) {
-            console.log('Cleanup legacy orientation unlock failed:', e)
-          }
+          try { (screen as any).unlockOrientation() } catch (e) {}
         }
-
         if ('webkitUnlockOrientation' in screen) {
-          try {
-            (screen as any).webkitUnlockOrientation()
-          } catch (e) {
-            console.log('Cleanup webkit orientation unlock failed:', e)
-          }
+          try { (screen as any).webkitUnlockOrientation() } catch (e) {}
         }
       }
-
-      setCurrentUrl(null)
     }
-  }, [authenticatedUrl, poster, title, stableOnEnded])
+  }, [authenticatedUrl])
 
   if (loading) {
     return (
