@@ -14,8 +14,8 @@ export async function GET(request: NextRequest) {
     console.log('Stream API: Processing URL:', videoUrl);
 
     // Use consistent environment variables with components
-    const username = process.env.NEXT_PUBLIC_CADDY_USERNAME || process.env.CADDY_USERNAME || "mat";
-    const password = process.env.NEXT_PUBLIC_CADDY_PASSWORD || process.env.CADDY_PASSWORD || "MatTh3pAR";
+    const username = process.env.VIDEO_AUTH_USERNAME || process.env.CADDY_USERNAME || process.env.NEXT_PUBLIC_CADDY_USERNAME || "mat";
+    const password = process.env.VIDEO_AUTH_PASSWORD || process.env.CADDY_PASSWORD || process.env.NEXT_PUBLIC_CADDY_PASSWORD || "MatTh3pAR";
     const encodedCredentials = btoa(`${username}:${password}`);
 
     const range = request.headers.get('range');

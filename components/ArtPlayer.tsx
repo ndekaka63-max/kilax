@@ -85,12 +85,13 @@ export function ArtPlayer({ url, poster, title, className, onEnded, episodes = [
         // Process URL - use direct URLs without proxy
         let normalizedUrl = url
         
-        // Handle encrypted/authenticated URLs
+        // Handle encrypted/authenticated URLs — route through server proxy
         if (url.startsWith('encrypted://') || url.startsWith('auth://')) {
           const urlPath = url.split('://')[1]
-          const username = process.env.NEXT_PUBLIC_CADDY_USERNAME || "mat"
-          const password = process.env.NEXT_PUBLIC_CADDY_PASSWORD || "MatTh3pAR"
-          normalizedUrl = `https://${username}:${password}@${urlPath}`
+          normalizedUrl = `/api/stream?url=${encodeURIComponent('https://' + urlPath)}`
+        } else if (url.startsWith('/')) {
+          // Relative API paths (e.g. /api/stream?url=...) — use as-is
+          normalizedUrl = url
         } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
           normalizedUrl = `https://${url}`
         }
@@ -150,10 +151,10 @@ export function ArtPlayer({ url, poster, title, className, onEnded, episodes = [
       volume: 0.5,
       isLive: false,
       muted: false,
-      autoplay: false,
+      autoplay: true,
       pip: true,
       autoSize: true,
-      autoMini: true,
+      autoMini: false,
       screenshot: true,
       setting: true,
       loop: false,
@@ -178,8 +179,15 @@ export function ArtPlayer({ url, poster, title, className, onEnded, episodes = [
       } as any,
       // Enable fast seeking
       fastForward: true,
-      // Optimize for streaming
-      type: 'mp4',
+      // Auto-detect video type from URL
+      ...(authenticatedUrl.toLowerCase().includes('.m3u8')
+        ? { type: 'hls' }
+        : authenticatedUrl.toLowerCase().includes('.mpd')
+          ? { type: 'dash' }
+          : authenticatedUrl.toLowerCase().includes('.flv')
+            ? { type: 'flv' }
+            : {}
+      ),
     })
 
     // Add error handling
@@ -316,7 +324,7 @@ export function ArtPlayer({ url, poster, title, className, onEnded, episodes = [
 
     // Handle video ended event
     art.on('video:ended', () => {
-      stableOnEnded()
+      onEnded?.()
     })
 
     // Handle fullscreen events for auto-rotation

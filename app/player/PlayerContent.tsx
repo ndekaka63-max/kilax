@@ -198,10 +198,10 @@ export default function PlayerContent() {
           throw new Error('No video URL available');
         }
 
-        // Use video URL directly
+        // Route through server-side proxy so Basic Auth is added server-side
         const normalizedUrl = normalizeVideoUrl(videoUrl);
-        console.log('🎬 PlayerContent URL:', normalizedUrl);
-        setStreamUrl(normalizedUrl);
+        const streamUrl = `/api/stream?url=${encodeURIComponent(normalizedUrl)}`;
+        setStreamUrl(streamUrl);
         setTitle(contentTitle);
         setLoading(false);
 
@@ -325,17 +325,17 @@ export default function PlayerContent() {
       const newUrl = `/player?id=${seriesId || contentId}&type=series&episodeId=${episode.id}`;
       window.history.replaceState({}, '', newUrl);
 
-      // Process video URL directly
+      // Process video URL through server-side proxy
       let videoUrl = episode.video_url;
       const normalizedUrl = normalizeVideoUrl(videoUrl);
-      console.log('🔄 Switching episode with direct URL');
+      const streamUrl = `/api/stream?url=${encodeURIComponent(normalizedUrl)}`;
 
       // Update current episode index
       const newIndex = allEpisodes.findIndex(ep => ep.id === episode.id);
       setCurrentEpisodeIndex(newIndex);
 
       // Update stream URL and title
-      setStreamUrl(videoUrl);
+      setStreamUrl(streamUrl);
       setTitle(`${contentData?.title || 'Series'} - ${episode.seasonName} - ${episode.title}`);
       setSwitchingEpisode(false);
 
