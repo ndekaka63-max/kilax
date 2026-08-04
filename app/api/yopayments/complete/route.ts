@@ -20,10 +20,11 @@ export async function POST(request: NextRequest) {
     let resolvedUserId: string | null = userId ?? null;
     if (!resolvedUserId && accessToken) {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
+        const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+            apikey: process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
           }
         });
         if (res.ok) {
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     if (serviceRoleKey) {
       try {
-        const adminClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', serviceRoleKey, {
+        const adminClient = createClient(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '', serviceRoleKey, {
           auth: { persistSession: false }
         });
 

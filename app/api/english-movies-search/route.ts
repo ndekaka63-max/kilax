@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // TMDB API configuration
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
-const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY || process.env.TMDB_API_KEY
+const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY
 
 if (!TMDB_API_KEY) {
-  throw new Error('TMDB_API_KEY is not defined in environment variables')
+  throw new Error('NEXT_PUBLIC_TMDB_API_KEY is not defined in environment variables')
 }
 
 // Helper function to fetch from TMDB

@@ -45,5 +45,10 @@ deployment environment (do NOT commit this key to source control):
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
+The app reads Supabase connection values from `SUPABASE_URL` and
+`SUPABASE_ANON_KEY`. The older `NEXT_PUBLIC_SUPABASE_*` names are still
+accepted as a fallback for compatibility, but the exact names above are the
+preferred ones.
+
 When present, server API routes will use the service role key for admin lookups. If
 it is not set the code will fall back to checking the `profiles` table where possible.
