@@ -2,18 +2,94 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey)
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+function createMissingSupabaseClient() {
+  const missingError = new Error(
+    'Missing Supabase environment variables. Set SUPABASE_URL and SUPABASE_ANON_KEY, or the NEXT_PUBLIC_ equivalents.'
+  )
+
+  const createQueryProxy = (): any =>
+    new Proxy(function () {}, {
+      apply() {
+        return createQueryProxy()
+      },
+      get(_target, property) {
+        if (property === 'then') {
+          return (_resolve: (value: unknown) => void, reject: (reason: Error) => void) => {
+            reject(missingError)
+          }
+        }
+
+        if (property === 'catch') {
+          return (handler: (reason: Error) => unknown) => Promise.reject(missingError).catch(handler)
+        }
+
+        if (property === 'finally') {
+          return (handler: () => unknown) => Promise.reject(missingError).finally(handler)
+        }
+
+        return createQueryProxy()
+      }
+    })
+
+  return {
+    from: () => createQueryProxy(),
+    rpc: () => Promise.reject(missingError),
+    auth: {
+      async getSession() {
+        return { data: { session: null }, error: missingError }
+      },
+      onAuthStateChange() {
+        return {
+          data: {
+            subscription: {
+              unsubscribe() {}
+            }
+          }
+        }
+      },
+      async signInWithPassword() {
+        return { data: null, error: missingError }
+      },
+      async signUp() {
+        return { data: null, error: missingError }
+      },
+      async signInWithOAuth() {
+        return { data: null, error: missingError }
+      },
+      async signOut() {
+        return { error: missingError }
+      },
+      async resetPasswordForEmail() {
+        return { data: null, error: missingError }
+      },
+      async updateUser() {
+        return { data: null, error: missingError }
+      },
+      async refreshSession() {
+        return { data: { session: null }, error: missingError }
+      },
+      async getUser() {
+        return { data: { user: null }, error: missingError }
+      }
+    }
+  } as unknown as ReturnType<typeof createClient>
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+if (!hasSupabaseConfig) {
+  console.warn('Supabase environment variables are missing; using a safe fallback client.')
+}
+
+export const supabase = hasSupabaseConfig
+  ? createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true
   }
-})
+  })
+  : createMissingSupabaseClient()
 
 // Database Types
 export interface Genre {
