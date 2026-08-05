@@ -47,6 +47,30 @@ export default function PlayerContent() {
     return `/api/stream?url=${encodeURIComponent(rawUrl)}`;
   };
 
+  const resolveStreamUrl = async (contentType: string, contentId: string, episodeId?: string | null) => {
+    const params = new URLSearchParams({
+      type: contentType,
+      id: contentId,
+    });
+
+    if (episodeId) {
+      params.set('episodeId', episodeId);
+    }
+
+    const response = await fetch(`/api/content-stream?${params.toString()}`);
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.error || 'Failed to resolve stream URL');
+    }
+
+    if (!payload?.streamUrl) {
+      throw new Error('No stream URL returned by backend');
+    }
+
+    return payload.streamUrl as string;
+  };
+
   // Preload next episode for faster switching
   const preloadNextEpisode = useCallback(() => {
     if (currentEpisodeIndex >= 0 && currentEpisodeIndex < allEpisodes.length - 1) {
@@ -216,8 +240,9 @@ export default function PlayerContent() {
           throw new Error('No video URL available');
         }
 
+        const resolvedStreamUrl = await resolveStreamUrl(contentType, contentId, episodeId);
         streamFetchedRef.current = fetchKey;
-        setStreamUrl(buildStreamProxyUrl(videoUrl));
+        setStreamUrl(resolvedStreamUrl || buildStreamProxyUrl(videoUrl));
         setTitle(contentTitle);
         setLoading(false);
 
