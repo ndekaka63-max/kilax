@@ -354,7 +354,7 @@ export default function PlayerContent() {
       const newUrl = `/player?id=${seriesId || contentId}&type=series&episodeId=${episode.id}`;
       window.history.replaceState({}, '', newUrl);
 
-      const streamUrl = await resolveStreamUrl('series', seriesId || contentId, episode.id);
+      const streamUrl = await resolveStreamUrl('series', seriesId || contentId || '', episode.id);
 
       // Update current episode index
       const newIndex = allEpisodes.findIndex(ep => ep.id === episode.id);
