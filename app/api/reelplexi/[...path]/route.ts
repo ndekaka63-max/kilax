@@ -21,10 +21,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
     const contentType = res.headers.get('Content-Type') || ''
     if (contentType.includes('application/json')) {
       const data = await res.json()
+      if (!res.ok) {
+        console.error('Reelplexi API proxy failed with JSON response', {
+          url,
+          status: res.status,
+          data
+        })
+      }
       return NextResponse.json(data, { status: res.status })
     }
 
     const data = await res.text()
+    if (!res.ok) {
+      console.error('Reelplexi API proxy failed with text response', {
+        url,
+        status: res.status,
+        body: data
+      })
+    }
     return new NextResponse(data, {
       status: res.status,
       headers: {
@@ -32,6 +46,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
       }
     })
   } catch (error: any) {
+    console.error('Reelplexi API proxy internal error', {
+      url,
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

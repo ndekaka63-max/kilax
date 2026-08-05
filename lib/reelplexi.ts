@@ -76,6 +76,12 @@ async function fetchReelplexi(endpoint: string, params: Record<string, string | 
 
   if (!res.ok) {
     const text = await res.text()
+    console.error('Reelplexi request failed', {
+      endpoint,
+      fullUrl,
+      status: res.status,
+      responseText: text
+    })
     throw new ReelplexiError(res.status, `HTTP error ${res.status}: ${text.substring(0, 150)}`)
   }
 
