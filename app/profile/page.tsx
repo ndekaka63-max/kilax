@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getProfile, Profile } from '@/lib/profiles';
 
-import { supabase } from '@/lib/supabase';
+import { getGenres } from '@/lib/api';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -20,16 +20,14 @@ export default function ProfilePage() {
         setProfile(prof);
 
         if (prof?.favorite_genres && prof.favorite_genres.length > 0) {
-          const { data, error } = await supabase
-            .from('genres')
-            .select('id, name')
-            .in('id', prof.favorite_genres);
-            
-          if (!error && data) {
-            const gMap: Record<string, string> = {};
-            data.forEach(g => gMap[g.id] = g.name);
-            setGenresMap(gMap);
-          }
+          const allGenres = await getGenres();
+          const gMap: Record<string, string> = {};
+          allGenres.forEach(g => {
+            if (prof.favorite_genres?.includes(g.id)) {
+              gMap[g.id] = g.name;
+            }
+          });
+          setGenresMap(gMap);
         }
       }
       setLoading(false);

@@ -44,8 +44,8 @@ export async function GET(request: Request) {
 
     // Combine and add type field
     const combined = [
-      ...allMovies.map(m => ({ ...m, type: 'movie' as const, created_at: m.release_date || new Date().toISOString() })),
-      ...allSeries.map(s => ({ ...s, type: 'series' as const, created_at: s.first_air_date || new Date().toISOString() }))
+      ...allMovies.map((m: any) => ({ ...m, type: 'movie' as const, created_at: m.release_date || new Date().toISOString() })),
+      ...allSeries.map((s: any) => ({ ...s, type: 'series' as const, created_at: s.first_air_date || new Date().toISOString() }))
     ]
 
     // Shuffle and take first 20

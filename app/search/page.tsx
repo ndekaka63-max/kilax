@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase"
+import { searchMovies, searchSeries } from "@/lib/api"
 import { NetflixCard } from "@/components/NetflixCard"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -78,46 +78,14 @@ export default function SearchPage() {
 
     setLoading(true)
     try {
-      const normalizedQuery = query.replace(/\s+/g, "")
-      
-      // Start Supabase search immediately (fastest)
-      const supabasePromise = Promise.all([
-        supabase
-          .from("movies")
-          .select(`
-            id, title, thumbnail_url, cover_image_url, description, release_date,
-            vjs (name)
-          `)
-          .eq("published", true)
-          .ilike("title", `%${normalizedQuery}%`)
-          .limit(15), // Reduced limit for faster response
-        supabase
-          .from("series")
-          .select(`
-            id, title, thumbnail_url, cover_image_url, description, release_date,
-            vjs (name)
-          `)
-          .eq("published", true)
-          .ilike("title", `%${normalizedQuery}%`)
-          .limit(15) // Reduced limit for faster response
+      // Fetch translated movies & series from ReelPlexi
+      const [movieResults, seriesResults] = await Promise.all([
+        searchMovies(query, 15),
+        searchSeries(query, 15)
       ])
-
-      // Get Supabase results first (usually fastest)
-      const [movieResults, seriesResults] = await supabasePromise
       
-      // Update UI immediately with Supabase results (normalize vjs data)
-      const normalizedMovies = (movieResults.data || []).map((movie: any) => ({
-        ...movie,
-        vjs: Array.isArray(movie.vjs) ? movie.vjs[0] : movie.vjs
-      }))
-      
-      const normalizedSeries = (seriesResults.data || []).map((series: any) => ({
-        ...series,
-        vjs: Array.isArray(series.vjs) ? series.vjs[0] : series.vjs
-      }))
-      
-      setMovies(normalizedMovies)
-      setSeries(normalizedSeries)
+      setMovies(movieResults as any)
+      setSeries(seriesResults as any)
       
       // Start TMDB searches in parallel (these are slower)
       const tmdbPromises = [

@@ -39,22 +39,29 @@ export default function SeriesDetailsPage() {
         return;
       }
 
-      const data = await getSeriesByIdClient(params.id as string, selectedSeason);
+      const seriesData = await getSeriesByIdClient(params.id as string);
 
-      if (!data || !data.series) {
+      if (!seriesData) {
         setError("Series not found");
         setLoading(false);
         return;
       }
 
-      console.log('Episodes data received:', data.episodes);
-      if (data.episodes && data.episodes.length > 0) {
-        console.log('First episode sample:', data.episodes[0]);
-      }
+      setSeries(seriesData);
 
-      setSeries(data.series);
-      setRelated(data.related || []);
-      setEpisodes(data.episodes || []);
+      try {
+        const { getEpisodes, getRelatedSeriesByGenre } = await import("@/lib/api");
+        const [episodesData, relatedData] = await Promise.all([
+          getEpisodes(params.id as string, selectedSeason),
+          getRelatedSeriesByGenre(params.id as string, seriesData.genre_ids || [])
+        ]);
+        setEpisodes(episodesData || []);
+        setRelated(relatedData || []);
+      } catch (err) {
+        console.error('Error fetching episodes/related:', err);
+        setEpisodes([]);
+        setRelated([]);
+      }
       setLoading(false);
     }
     fetchSeriesData();

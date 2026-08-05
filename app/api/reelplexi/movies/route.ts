@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     
     return NextResponse.json({
       success: true,
-      data: movies.map(movie => ({
+      data: movies.map((movie: any) => ({
         ...movie,
         created_at: movie.release_date || new Date().toISOString(),
         published: true,

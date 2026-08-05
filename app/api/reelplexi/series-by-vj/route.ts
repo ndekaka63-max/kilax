@@ -13,14 +13,14 @@ export async function GET(request: Request) {
 
     const series = await ReelplexiService.getSeries(1, 200)
     
-    const filtered = series.filter(show => {
+    const filtered = series.filter((show: any) => {
       if (!show.vjs?.name) return false
       const showVjName = show.vjs.name.toLowerCase()
       return showVjName === vjName.toLowerCase() || 
              showVjName.replace(/\s+/g, '-') === vjId
     })
 
-    const results = filtered.map(show => ({
+    const results = filtered.map((show: any) => ({
       ...show,
       created_at: show.first_air_date || new Date().toISOString(),
       published: true,

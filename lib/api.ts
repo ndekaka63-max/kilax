@@ -1,280 +1,419 @@
-import { supabase, Movie, Series, Genre } from './supabase'
-import ReelplexiService, { ReelplexiMovie, ReelplexiSeries } from './reelplexi-service'
+import { Movie, Series, Genre } from './supabase'
+import * as Reelplexi from './reelplexi'
 
-// Movies API - Enhanced with video URLs and watchable content from Reelpexi
-export async function getMovies(limit = 20) {
+// Movies API
+export async function getMovies(limit = 20, page = 1, genre?: string) {
   try {
-    const movies = await ReelplexiService.getMovies(1, limit)
-    return movies.map(movie => ({
-      ...movie,
-      created_at: movie.release_date || new Date().toISOString(),
-      published: true,
-      premium: false,
-    })) as unknown as Movie[]
+    const movies = await Reelplexi.getReelplexiMovies(page, limit, genre);
+    return movies as Movie[];
   } catch (error) {
-    console.error('Error fetching movies from Reelpexi:', error)
-    return []
+    console.error('Error fetching movies from Reelplexi:', error);
+    return [];
+  }
+}
+
+export async function getMovieById(id: string) {
+  try {
+    const movie = await Reelplexi.getReelplexiMovieById(id);
+    return movie as Movie | null;
+  } catch (error) {
+    console.error(`Error fetching movie ${id}:`, error);
+    return null;
+  }
+}
+
+export async function getMovieTrailers(id: string) {
+  try {
+    return await Reelplexi.getReelplexiMovieTrailers(id);
+  } catch (error) {
+    console.error(`Error fetching movie trailers ${id}:`, error);
+    return [];
+  }
+}
+
+export async function getMovieStream(id: string) {
+  try {
+    return await Reelplexi.getReelplexiMovieStream(id);
+  } catch (error) {
+    console.error(`Error fetching movie stream ${id}:`, error);
+    return null;
   }
 }
 
 export async function getFeaturedMovie() {
   try {
-    const trending = await ReelplexiService.getTrendingMovies(1, 1)
-    if (trending.length === 0) return null
-    const movie = trending[0]
-    return {
-      ...movie,
-      created_at: movie.release_date || new Date().toISOString(),
-      published: true,
-      premium: false,
-      recommend: true,
-    } as unknown as Movie
+    const movies = await Reelplexi.getReelplexiTrendingMovies(1, 1);
+    return (movies[0] || null) as Movie | null;
   } catch (error) {
-    console.error('Error fetching featured movie from Reelpexi:', error)
-    return null
+    console.error('Error fetching featured movie from Reelplexi:', error);
+    return null;
   }
 }
 
 export async function getPopularMovies(limit = 6) {
   try {
-    const movies = await ReelplexiService.getTopMovies(1, limit)
-    return movies.map(movie => ({
-      ...movie,
-      created_at: movie.release_date || new Date().toISOString(),
-      published: true,
-      premium: false,
-      popular: true,
-    })) as unknown as Movie[]
+    const movies = await Reelplexi.getReelplexiTrendingMovies(1, limit);
+    return movies as Movie[];
   } catch (error) {
-    console.error('Error fetching popular movies from Reelpexi:', error)
-    return []
+    console.error('Error fetching popular movies:', error);
+    return [];
   }
 }
 
-// Series API - Enhanced with video URLs and watchable content from Reelpexi
-export async function getSeries(limit = 20) {
+export async function getSeries(limit = 24, page = 1, genre?: string) {
   try {
-    const series = await ReelplexiService.getSeries(1, limit)
-    return series.map(show => ({
-      ...show,
-      created_at: show.first_air_date || new Date().toISOString(),
-      published: true,
-      seasons: [], // Seasons loaded separately when needed
-    })) as unknown as Series[]
+    const series = await Reelplexi.getReelplexiSeries(page, limit, genre);
+    return series as Series[];
   } catch (error) {
-    console.error('Error fetching series from Reelpexi:', error)
-    return []
+    console.error('Error fetching series from Reelplexi:', error);
+    return [];
   }
 }
 
-// Translated Content (VJ-translated content) - Enhanced with video URLs from Reelpexi
+export async function getSeriesById(id: string) {
+  try {
+    const series = await Reelplexi.getReelplexiSeriesById(id);
+    return series as Series | null;
+  } catch (error) {
+    console.error(`Error fetching series ${id}:`, error);
+    return null;
+  }
+}
+
+export async function getSeriesTrailers(id: string) {
+  try {
+    return await Reelplexi.getReelplexiSeriesTrailers(id);
+  } catch (error) {
+    console.error(`Error fetching series trailers ${id}:`, error);
+    return [];
+  }
+}
+
+export async function getEpisodes(seriesId: string, season: number) {
+  try {
+    return await Reelplexi.getReelplexiEpisodes(seriesId, season);
+  } catch (error) {
+    console.error(`Error fetching episodes for series ${seriesId} season ${season}:`, error);
+    return [];
+  }
+}
+
+export async function getEpisodeStream(seriesId: string, season: number, episode: number) {
+  try {
+    return await Reelplexi.getReelplexiEpisodeStream(seriesId, season, episode);
+  } catch (error) {
+    console.error(`Error fetching stream for series ${seriesId} season ${season} episode ${episode}:`, error);
+    return null;
+  }
+}
+
+// Translated in Streamit previously meant NO VJ_ID (original language)
 export async function getTranslatedMovies(limit = 6) {
-  return getMovies(limit)
+  try {
+    // Fetch a larger batch to filter
+    const movies = await Reelplexi.getReelplexiMovies(1, 50);
+    return movies.filter((m: any) => !m.vj_id).slice(0, limit) as Movie[];
+  } catch (error) {
+    console.error('Error fetching translated movies:', error);
+    return [];
+  }
 }
 
 export async function getTranslatedSeries(limit = 6) {
-  return getSeries(limit)
+  try {
+    const series = await Reelplexi.getReelplexiSeries(1, 50);
+    return series.filter((s: any) => !s.vj_id).slice(0, limit) as Series[];
+  } catch (error) {
+    console.error('Error fetching translated series:', error);
+    return [];
+  }
 }
 
-// Combined translated content
 export async function getTranslatedContent(limit = 12) {
-  const movies = await getTranslatedMovies(limit / 2)
-  const series = await getTranslatedSeries(limit / 2)
-
-  // Combine and add type field
-  const combined = [
-    ...movies.map(item => ({ ...item, type: 'movie' as const })),
-    ...series.map(item => ({ ...item, type: 'series' as const }))
-  ]
-
-  // Sort by created_at
-  return combined.sort((a, b) =>
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  ).slice(0, limit)
+  const movies = await getTranslatedMovies(limit);
+  const series = await getTranslatedSeries(limit);
+  
+  const combined = [];
+  const maxLength = Math.max(movies.length, series.length);
+  for (let i = 0; i < maxLength; i++) {
+    if (movies[i]) combined.push(movies[i]);
+    if (series[i]) combined.push(series[i]);
+  }
+  
+  return combined.slice(0, limit);
 }
 
-// VJ Content (content WITH VJs) - Enhanced with video URLs from Reelpexi
 export async function getVJMovies(limit = 6) {
   try {
-    const movies = await ReelplexiService.getMovies(1, limit)
-    // Filter only movies with VJ translators
-    const vjMovies = movies.filter(movie => movie.vjs?.name)
-    return vjMovies.map(movie => ({
-      ...movie,
-      created_at: movie.release_date || new Date().toISOString(),
-      published: true,
-      premium: false,
-    })) as unknown as (Movie & { vjs: { id: string; name: string } | null })[]
+    const movies = await Reelplexi.getReelplexiMovies(1, 50);
+    return movies.filter((m: any) => !!m.vj_id).slice(0, limit) as (Movie & { vjs: { id: string; name: string } | null })[];
   } catch (error) {
-    console.error('Error fetching VJ movies from Reelpexi:', error)
-    return []
+    console.error('Error fetching VJ movies:', error);
+    return [];
   }
 }
 
 export async function getVJSeries(limit = 6) {
   try {
-    const series = await ReelplexiService.getSeries(1, limit)
-    // Filter only series with VJ translators
-    const vjSeries = series.filter(show => show.vjs?.name)
-    return vjSeries.map(show => ({
-      ...show,
-      created_at: show.first_air_date || new Date().toISOString(),
-      published: true,
-      seasons: [],
-    })) as unknown as (Series & { vjs: { id: string; name: string } | null })[]
+    const series = await Reelplexi.getReelplexiSeries(1, 50);
+    return series.filter((s: any) => !!s.vj_id).slice(0, limit) as (Series & { vjs: { id: string; name: string } | null })[];
   } catch (error) {
-    console.error('Error fetching VJ series from Reelpexi:', error)
-    return []
+    console.error('Error fetching VJ series:', error);
+    return [];
   }
 }
 
-// Combined VJ content
 export async function getVJContent(limit = 12) {
-  const movies = await getVJMovies(limit / 2)
-  const series = await getVJSeries(limit / 2)
-
-  // Combine and add type field
-  const combined = [
-    ...movies.map(item => ({ ...item, type: 'movie' as const })),
-    ...series.map(item => ({ ...item, type: 'series' as const }))
-  ]
-
-  // Sort by created_at
-  return combined.sort((a, b) =>
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  ).slice(0, limit)
+  const movies = await getVJMovies(limit);
+  const series = await getVJSeries(limit);
+  
+  const combined = [];
+  const maxLength = Math.max(movies.length, series.length);
+  for (let i = 0; i < maxLength; i++) {
+    if (movies[i]) combined.push(movies[i]);
+    if (series[i]) combined.push(series[i]);
+  }
+  
+  return combined.slice(0, limit);
 }
 
-
-
-// Genres API from Reelpexi
+// Genres API
 export async function getGenres() {
   try {
-    const genres = await ReelplexiService.getGenres()
-    return genres as Genre[]
+    return await Reelplexi.getReelplexiGenres() as Genre[];
   } catch (error) {
-    console.error('Error fetching genres from Reelpexi:', error)
-    return []
+    console.error('Error fetching genres from Reelplexi:', error);
+    return [];
   }
 }
 
-// Search API - Enhanced with video URLs from Reelpexi
-export async function searchMovies(query: string, limit = 20) {
+export async function getGenreRowsForHome(limit = 12) {
   try {
-    const movies = await ReelplexiService.searchMovies(query, 1, limit)
-    return movies.map(movie => ({
-      ...movie,
-      created_at: movie.release_date || new Date().toISOString(),
-      published: true,
-      premium: false,
-    })) as unknown as Movie[]
+    const genres = await getGenres();
+    let genreRows: any[] = [];
+    
+    if (genres && genres.length > 0) {
+      // Take top 3 genres
+      const topGenres = genres.slice(0, 3);
+      
+      const fetchedRows = await Promise.all(
+        topGenres.map(async (genre) => {
+          try {
+            const [movies, series] = await Promise.all([
+              Reelplexi.getReelplexiMoviesByGenre(genre.id, 1, limit),
+              Reelplexi.getReelplexiSeriesByGenre(genre.id, 1, limit)
+            ]);
+            return {
+              name: genre.name,
+              movies: movies || [],
+              series: series || []
+            };
+          } catch (error) {
+            console.error(`Error fetching content for genre ${genre.name}:`, error);
+            return { name: genre.name, movies: [], series: [] };
+          }
+        })
+      );
+      
+      genreRows = fetchedRows.filter(row => row.movies.length > 0 || row.series.length > 0);
+    }
+    
+    // Fallback: If API returned no genres, build them from recent content
+    if (!genreRows || genreRows.length === 0) {
+      console.log('Using fallback genre row generation from recent content');
+      const allMovies = await getMovies(limit * 2);
+      const allSeries = await getSeries(limit * 2);
+      const allContent = [...allMovies, ...allSeries];
+      
+      const genreMap = new Map<string, any[]>();
+      allContent.forEach(item => {
+        if (item.genre_ids && Array.isArray(item.genre_ids)) {
+          item.genre_ids.forEach((g: string) => {
+            const prettyName = g.charAt(0).toUpperCase() + g.slice(1);
+            if (!genreMap.has(prettyName)) genreMap.set(prettyName, []);
+            if (!genreMap.get(prettyName)!.find(existing => existing.id === item.id)) {
+              genreMap.get(prettyName)!.push(item);
+            }
+          });
+        }
+      });
+      
+      const extractedGenres = Array.from(genreMap.entries())
+        .map(([name, content]) => ({
+          name,
+          movies: content.filter(item => item.type === 'movie'),
+          series: content.filter(item => item.type === 'series')
+        }))
+        .sort((a, b) => (b.movies.length + b.series.length) - (a.movies.length + a.series.length))
+        .slice(0, 3);
+        
+      genreRows = extractedGenres.filter(g => g.movies.length >= 2 || g.series.length >= 2);
+    }
+    
+    return genreRows;
   } catch (error) {
-    console.error('Error searching movies from Reelpexi:', error)
-    return []
+    console.error('Error fetching genre rows for home:', error);
+    return [];
   }
 }
 
-export async function searchSeries(query: string, limit = 20) {
+// Search API using Reelplexi API filters
+export async function searchMovies(query: string, limit = 20, page = 1, vjName?: string, genre?: string) {
   try {
-    const series = await ReelplexiService.searchSeries(query, 1, limit)
-    return series.map(show => ({
-      ...show,
-      created_at: show.first_air_date || new Date().toISOString(),
-      published: true,
-      seasons: [],
-    })) as unknown as Series[]
+    if (!query.trim() && !vjName) {
+      return await getMovies(limit, page, genre);
+    }
+    const q = query.trim();
+    const movies = await Reelplexi.searchReelplexiMovies(q, page, limit, vjName, genre);
+    return movies as Movie[];
   } catch (error) {
-    console.error('Error searching series from Reelpexi:', error)
-    return []
+    console.error('Error searching movies:', error);
+    return [];
   }
 }
 
-// Related content by genre - Enhanced with video URLs from Reelpexi
+export async function searchSeries(query: string, limit = 20, page = 1, vjName?: string, genre?: string) {
+  try {
+    if (!query.trim() && !vjName) {
+      return await getSeries(limit, page, genre);
+    }
+    const q = query.trim();
+    const series = await Reelplexi.searchReelplexiSeries(q, page, limit, vjName, genre);
+    return series as Series[];
+  } catch (error) {
+    console.error('Error searching series:', error);
+    return [];
+  }
+}
+
+export async function searchAllContent(query: string, limit = 50, page = 1, vjName?: string, genre?: string) {
+  try {
+    if (!query.trim() && !vjName) {
+      const [m, s] = await Promise.all([
+        getMovies(limit, page, genre),
+        getSeries(limit, page, genre)
+      ]);
+      const combined = [...m, ...s].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      return combined.slice(0, limit);
+    }
+    const q = query.trim();
+    const items = await Reelplexi.searchReelplexiAll(q, page, limit, vjName, genre);
+    return items as any[];
+  } catch (error) {
+    console.error('Error searching all content:', error);
+    return [];
+  }
+}
+
+export async function getVJs() {
+  try {
+    const vjs = await Reelplexi.getReelplexiVJs(1, 100);
+    // VJ ids must be case-insensitive to match correctly on the frontend filters
+    return vjs.map((vj: any) => ({ id: (vj.name || '').toLowerCase(), name: vj.name }));
+  } catch (error) {
+    console.error('Error fetching vjs:', error);
+    return [];
+  }
+}
+
+// Related content by genre
 export async function getRelatedMoviesByGenre(movieId: string, genreIds: string[], limit = 6) {
   try {
-    const related = await ReelplexiService.getRelatedMovies(movieId, 1, limit)
-    return related.map(movie => ({
-      ...movie,
-      created_at: movie.release_date || new Date().toISOString(),
-      published: true,
-      premium: false,
-    })) as unknown as Movie[]
+    const movies = await Reelplexi.getReelplexiRelatedMoviesByGenre(movieId, 1, limit);
+    if (movies && movies.length > 0) {
+      return movies as Movie[];
+    }
+    
+    // Fallback logic if API returns empty
+    const allMovies = await getMovies(50, 1);
+    const related = allMovies
+      .filter(m => m.id !== movieId)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, limit);
+    return related;
   } catch (error) {
-    console.error('Error fetching related movies from Reelpexi:', error)
-    return []
+    console.error('Error fetching related movies:', error);
+    return [];
   }
 }
 
 export async function getRelatedSeriesByGenre(seriesId: string, genreIds: string[], limit = 6) {
   try {
-    const related = await ReelplexiService.getRelatedSeries(seriesId, 1, limit)
-    return related.map(show => ({
-      ...show,
-      created_at: show.first_air_date || new Date().toISOString(),
-      published: true,
-      seasons: [],
-    })) as unknown as Series[]
+    const series = await Reelplexi.getReelplexiRelatedSeriesByGenre(seriesId, 1, limit);
+    if (series && series.length > 0) {
+      return series as Series[];
+    }
+    
+    // Fallback logic if API returns empty
+    const allSeries = await getSeries(50, 1);
+    const related = allSeries
+      .filter(s => s.id !== seriesId)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, limit);
+    return related;
   } catch (error) {
-    console.error('Error fetching related series from Reelpexi:', error)
-    return []
+    console.error('Error fetching related series:', error);
+    return [];
   }
 }
 
-// Kilax Exclusive Content API - All content from Reelpexi is considered exclusive
+// Kilax Exclusive Content API - Mapping to Trending for now since Reelplexi is the source
 export async function getKilaxExclusiveMovies(limit = 6) {
-  return getMovies(limit)
+  try {
+    const movies = await Reelplexi.getReelplexiTrendingMovies(1, limit);
+    return movies as Movie[];
+  } catch (error) {
+    console.error('Error fetching Kilax exclusive movies:', error);
+    return [];
+  }
 }
 
 export async function getKilaxExclusiveSeries(limit = 6) {
-  return getSeries(limit)
+  try {
+    const series = await Reelplexi.getReelplexiTrendingSeries(1, limit);
+    return series as Series[];
+  } catch (error) {
+    console.error('Error fetching Kilax exclusive series:', error);
+    return [];
+  }
 }
 
-// Combined Kilax exclusive content
 export async function getKilaxExclusiveContent(limit = 12) {
-  const movies = await getKilaxExclusiveMovies(limit / 2)
-  const series = await getKilaxExclusiveSeries(limit / 2)
-
-  // Combine and add type field
-  const combined = [
-    ...movies.map(item => ({ ...item, type: 'movie' as const })),
-    ...series.map(item => ({ ...item, type: 'series' as const }))
-  ]
-
-  // Sort by created_at
-  return combined.sort((a, b) =>
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  ).slice(0, limit) as Array<(Movie | Series) & { type: 'movie' | 'series'; vjs: { id: string; name: string } | null }>
+  try {
+    const all = await Reelplexi.getReelplexiTrendingAll(1, limit);
+    return all as Array<(Movie | Series) & { type: 'movie' | 'series'; vjs: { id: string; name: string } | null }>;
+  } catch (error) {
+    console.error('Error fetching Kilax exclusive content:', error);
+    return [];
+  }
 }
 
-// Category API - Enhanced with video URLs from Reelpexi
+// Category API
 export async function getMoviesByCategory(category: string, limit = 20) {
   try {
-    const movies = await ReelplexiService.getMoviesByGenre(category.toLowerCase())
-    return movies.slice(0, limit).map(movie => ({
-      ...movie,
-      created_at: movie.release_date || new Date().toISOString(),
-      published: true,
-      premium: false,
-      category,
-    })) as unknown as Movie[]
+    const movies = await Reelplexi.getReelplexiMoviesByGenre(category.toLowerCase(), 1, limit);
+    return movies as Movie[];
   } catch (error) {
-    console.error('Error fetching movies by category from Reelpexi:', error)
-    return []
+    console.error('Error fetching movies by category:', error);
+    return [];
   }
 }
 
 export async function getSeriesByCategory(category: string, limit = 20) {
   try {
-    const series = await ReelplexiService.getSeriesByGenre(category.toLowerCase())
-    return series.slice(0, limit).map(show => ({
-      ...show,
-      created_at: show.first_air_date || new Date().toISOString(),
-      published: true,
-      seasons: [],
-      category,
-    })) as unknown as Series[]
+    const series = await Reelplexi.getReelplexiSeriesByGenre(category.toLowerCase(), 1, limit);
+    return series as Series[];
   } catch (error) {
-    console.error('Error fetching series by category from Reelpexi:', error)
-    return []
+    console.error('Error fetching series by category:', error);
+    return [];
   }
+}
+
+// Download API
+export async function getMovieDownload(id: string) {
+  return await Reelplexi.getReelplexiMovieDownloadUrl(id);
+}
+
+export async function getEpisodeDownload(seriesId: string, season: number, episode: number) {
+  return await Reelplexi.getReelplexiEpisodeDownloadUrl(seriesId, season, episode);
 }

@@ -1,11 +1,10 @@
-// Client-side API wrapper for Reelpexi endpoints
-// Use these functions in client components ("use client")
+import * as Reelplexi from './reelplexi'
+import { getMovies, getSeries, getVJContent, getGenreRowsForHome, searchMovies, searchSeries, getVJs, getMovieById, getSeriesById, getMovieStream, getEpisodeStream } from './api'
 
 export async function getMoviesClient(page = 1, limit = 50) {
   try {
-    const response = await fetch(`/api/reelplexi/movies?page=${page}&limit=${limit}`)
-    const data = await response.json()
-    return data.success ? { data: data.data, hasMore: data.pagination?.hasMore ?? false } : { data: [], hasMore: false }
+    const data = await getMovies(limit, page)
+    return { data, hasMore: data.length >= limit }
   } catch (error) {
     console.error('Error fetching movies:', error)
     return { data: [], hasMore: false }
@@ -14,10 +13,8 @@ export async function getMoviesClient(page = 1, limit = 50) {
 
 export async function getSeriesClient(page = 1, limit = 50) {
   try {
-    const response = await fetch(`/api/reelplexi/series?page=${page}&limit=${limit}`)
-    if (!response.ok) return { data: [], hasMore: false }
-    const data = await response.json()
-    return data.success ? { data: data.data, hasMore: data.pagination?.hasMore ?? false } : { data: [], hasMore: false }
+    const data = await getSeries(limit, page)
+    return { data, hasMore: data.length >= limit }
   } catch (error) {
     console.error('Error fetching series:', error)
     return { data: [], hasMore: false }
@@ -26,9 +23,7 @@ export async function getSeriesClient(page = 1, limit = 50) {
 
 export async function getVJContentClient(limit = 12) {
   try {
-    const response = await fetch(`/api/reelplexi/vj-content?limit=${limit}`)
-    const data = await response.json()
-    return data.success ? data.data : []
+    return await getVJContent(limit)
   } catch (error) {
     console.error('Error fetching VJ content:', error)
     return []
@@ -36,20 +31,15 @@ export async function getVJContentClient(limit = 12) {
 }
 
 export async function getKilaxExclusiveContentClient(limit = 12) {
-  // All Reelpexi content is considered exclusive
   try {
-    const [moviesResult, seriesResult] = await Promise.all([
-      getMoviesClient(1, Math.ceil(limit / 2)),
-      getSeriesClient(1, Math.ceil(limit / 2))
-    ])
-    
+    const movies = await getMovies(limit / 2)
+    const series = await getSeries(limit / 2)
     const combined = [
-      ...moviesResult.data.map((item: any) => ({ ...item, type: 'movie' as const })),
-      ...seriesResult.data.map((item: any) => ({ ...item, type: 'series' as const })),
+      ...movies.map((item: any) => ({ ...item, type: 'movie' as const })),
+      ...series.map((item: any) => ({ ...item, type: 'series' as const })),
     ]
-    
-    return combined.sort((a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    return combined.sort((a: any, b: any) =>
+      new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     ).slice(0, limit)
   } catch (error) {
     console.error('Error fetching exclusive content:', error)
@@ -59,16 +49,7 @@ export async function getKilaxExclusiveContentClient(limit = 12) {
 
 export async function getGenreRowsClient(limit = 12) {
   try {
-    console.log('Fetching genre rows...')
-    const response = await fetch(`/api/reelplexi/genres?limit=${limit}`)
-    console.log('Genre rows response status:', response.status)
-    if (!response.ok) {
-      console.error('Genre rows failed with status:', response.status)
-      return []
-    }
-    const data = await response.json()
-    console.log('Genre rows data:', data)
-    return data.success ? data.data : []
+    return await getGenreRowsForHome(limit)
   } catch (error) {
     console.error('Error fetching genre rows:', error)
     return []
@@ -77,9 +58,7 @@ export async function getGenreRowsClient(limit = 12) {
 
 export async function searchMoviesClient(query: string) {
   try {
-    const response = await fetch(`/api/reelplexi/search?q=${encodeURIComponent(query)}&type=movies`)
-    const data = await response.json()
-    return data.success ? data.data : []
+    return await searchMovies(query)
   } catch (error) {
     console.error('Error searching movies:', error)
     return []
@@ -88,9 +67,7 @@ export async function searchMoviesClient(query: string) {
 
 export async function searchSeriesClient(query: string) {
   try {
-    const response = await fetch(`/api/reelplexi/search?q=${encodeURIComponent(query)}&type=series`)
-    const data = await response.json()
-    return data.success ? data.data : []
+    return await searchSeries(query)
   } catch (error) {
     console.error('Error searching series:', error)
     return []
@@ -99,9 +76,7 @@ export async function searchSeriesClient(query: string) {
 
 export async function getVJsClient() {
   try {
-    const response = await fetch('/api/reelplexi/vjs')
-    const data = await response.json()
-    return data.success ? data.data : []
+    return await getVJs()
   } catch (error) {
     console.error('Error fetching VJs:', error)
     return []
@@ -110,9 +85,7 @@ export async function getVJsClient() {
 
 export async function getMoviesByVJClient(vjId: string, vjName: string) {
   try {
-    const response = await fetch(`/api/reelplexi/movies-by-vj?vjId=${encodeURIComponent(vjId)}&vjName=${encodeURIComponent(vjName)}`)
-    const data = await response.json()
-    return data.success ? data.data : []
+    return await Reelplexi.searchReelplexiMovies('', 1, 50, vjName)
   } catch (error) {
     console.error('Error fetching movies by VJ:', error)
     return []
@@ -121,9 +94,7 @@ export async function getMoviesByVJClient(vjId: string, vjName: string) {
 
 export async function getSeriesByVJClient(vjId: string, vjName: string) {
   try {
-    const response = await fetch(`/api/reelplexi/series-by-vj?vjId=${encodeURIComponent(vjId)}&vjName=${encodeURIComponent(vjName)}`)
-    const data = await response.json()
-    return data.success ? data.data : []
+    return await Reelplexi.searchReelplexiSeries('', 1, 50, vjName)
   } catch (error) {
     console.error('Error fetching series by VJ:', error)
     return []
@@ -132,9 +103,7 @@ export async function getSeriesByVJClient(vjId: string, vjName: string) {
 
 export async function getMovieByIdClient(id: string) {
   try {
-    const response = await fetch(`/api/reelplexi/movie?id=${encodeURIComponent(id)}`)
-    const data = await response.json()
-    return data.success ? data.data : null
+    return await getMovieById(id)
   } catch (error) {
     console.error('Error fetching movie:', error)
     return null
@@ -143,12 +112,7 @@ export async function getMovieByIdClient(id: string) {
 
 export async function getSeriesByIdClient(id: string, season?: number) {
   try {
-    const url = season 
-      ? `/api/reelplexi/series?id=${encodeURIComponent(id)}&season=${season}`
-      : `/api/reelplexi/series?id=${encodeURIComponent(id)}`
-    const response = await fetch(url)
-    const data = await response.json()
-    return data.success ? data.data : null
+    return await getSeriesById(id)
   } catch (error) {
     console.error('Error fetching series:', error)
     return null
@@ -157,14 +121,14 @@ export async function getSeriesByIdClient(id: string, season?: number) {
 
 export async function getStreamUrlClient(id: string, type: 'movie' | 'episode', season?: number, episode?: number) {
   try {
-    let url = `/api/reelplexi/stream?id=${encodeURIComponent(id)}&type=${type}`
-    if (type === 'episode' && season !== undefined && episode !== undefined) {
-      url += `&season=${season}&episode=${episode}`
+    if (type === 'movie') {
+      const stream = await getMovieStream(id)
+      return stream?.video_url || null
+    } else if (season !== undefined && episode !== undefined) {
+      const stream = await getEpisodeStream(id, season, episode)
+      return stream?.video_url || null
     }
-    const response = await fetch(url)
-    const data = await response.json()
-    // Return the stream_url directly from the response
-    return data.stream_url || null
+    return null
   } catch (error) {
     console.error('Error fetching stream URL:', error)
     return null

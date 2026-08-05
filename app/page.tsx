@@ -156,8 +156,8 @@ export default function HomePage() {
       try {
         // First, load only the essential data for above-the-fold content
         const vjData = await getVJContentClient(8);
-        setFeaturedContent(vjData.slice(0, 5));
-        setVJContent(vjData);
+        setFeaturedContent((vjData as any[]).map((item: any) => ({ ...item, type: item.type || 'movie' })) as VJContent[]);
+        setVJContent((vjData as any[]).map((item: any) => ({ ...item, type: item.type || 'movie' })) as VJContent[]);
         setLoading(false); // Hide skeleton as soon as hero content is ready
 
         // Then load the rest of the content progressively

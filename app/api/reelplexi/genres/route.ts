@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     
     console.log('Fetching genres from Reelplexi...')
     const genres = await ReelplexiService.getGenres()
-    console.log('Genres fetched:', genres.length, 'genres:', genres.map(g => g.name).join(', '))
+    console.log('Genres fetched:', genres.length, 'genres:', genres.map((g: any) => g.name).join(', '))
     
     if (genres.length === 0) {
       console.warn('No genres returned from Reelpexi')
@@ -20,17 +20,17 @@ export async function GET(request: Request) {
     
     // Take first 3 genres for home page to avoid timeout
     const topGenres = genres.slice(0, 3)
-    console.log('Processing genres:', topGenres.map(g => g.name).join(', '))
+    console.log('Processing genres:', topGenres.map((g: any) => g.name).join(', '))
     
     const genreRows = await Promise.all(
-      topGenres.map(async (genre) => {
+      topGenres.map(async (genre: any) => {
         try {
           console.log(`Fetching content for genre: ${genre.name} (id: ${genre.id})`)
           // Only fetch movies to speed up the request
           const movies = await ReelplexiService.getMoviesByGenre(genre.id)
           console.log(`Genre ${genre.name} returned ${movies.length} movies`)
           
-          const items = movies.slice(0, limit).map(item => ({
+          const items = movies.slice(0, limit).map((item: any) => ({
             ...item,
             type: 'movie' as const,
             created_at: item.release_date || new Date().toISOString(),

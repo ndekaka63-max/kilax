@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     
     if (type === 'series') {
       const seriesResults = await ReelplexiService.searchSeries(query, 1, 100)
-      results = seriesResults.map(item => ({
+      results = seriesResults.map((item: any) => ({
         ...item,
         created_at: item.first_air_date || new Date().toISOString(),
         published: true,
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       }))
     } else {
       const movieResults = await ReelplexiService.searchMovies(query, 1, 100)
-      results = movieResults.map(item => ({
+      results = movieResults.map((item: any) => ({
         ...item,
         created_at: item.release_date || new Date().toISOString(),
         published: true,

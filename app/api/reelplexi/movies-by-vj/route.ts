@@ -13,14 +13,14 @@ export async function GET(request: Request) {
 
     const movies = await ReelplexiService.getMovies(1, 200)
     
-    const filtered = movies.filter(movie => {
+    const filtered = movies.filter((movie: any) => {
       if (!movie.vjs?.name) return false
       const movieVjName = movie.vjs.name.toLowerCase()
       return movieVjName === vjName.toLowerCase() || 
              movieVjName.replace(/\s+/g, '-') === vjId
     })
 
-    const results = filtered.map(movie => ({
+    const results = filtered.map((movie: any) => ({
       ...movie,
       created_at: movie.release_date || new Date().toISOString(),
       published: true,

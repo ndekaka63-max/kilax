@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import VideoPlayer from '@/components/VideoPlayer';
 import { ArrowLeft, AlertCircle, ChevronLeft, ChevronRight, Play, Download } from 'lucide-react';
@@ -9,9 +9,12 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import AuthRequiredModal, { useAuthCheck } from '@/components/AuthRequiredModal';
+import { IOSDownloadModal } from '@/components/IOSDownloadModal';
 import { getProfile, Profile } from '@/lib/profiles';
 import { Episode, EpisodeWithSeason } from '@/lib/supabase';
 import { normalizeVideoUrl } from '@/lib/utils';
+import { getMovieById, getSeriesById, getEpisodes, getMovieStream, getEpisodeStream } from "@/lib/api";
+import { isIOSDevice } from '@/lib/device-utils';
 
 export default function PlayerContent() {
   const searchParams = useSearchParams();
@@ -28,30 +31,17 @@ export default function PlayerContent() {
   const [showNextEpisodePrompt, setShowNextEpisodePrompt] = useState(false);
   const [seriesId, setSeriesId] = useState<string | null>(null);
   const [switchingEpisode, setSwitchingEpisode] = useState(false);
+  const [showIOSDownloadModal, setShowIOSDownloadModal] = useState(false);
+  const [iosDownloadInfo, setIOSDownloadInfo] = useState<{ url: string; filename: string } | null>(null);
+  // Tracks the content key for which we have already successfully fetched a stream URL,
+  // preventing redundant re-fetches caused by multiple Supabase auth state events
+  const streamFetchedRef = useRef<string | null>(null);
 
   const { user, loading: authLoading, isPremium } = useAuth();
   const { checkAuth } = useAuthCheck();
 
-  // Preload next episode for faster switching
   const preloadNextEpisode = useCallback(() => {
-    if (currentEpisodeIndex >= 0 && currentEpisodeIndex < allEpisodes.length - 1) {
-      const nextEpisode = allEpisodes[currentEpisodeIndex + 1];
-      if (nextEpisode?.video_url) {
-        // Preload through proxy
-        const preloadVideo = document.createElement('video');
-        preloadVideo.preload = 'metadata';
-        preloadVideo.src = normalizeVideoUrl(nextEpisode.video_url);
-        preloadVideo.style.display = 'none';
-        document.body.appendChild(preloadVideo);
-
-        // Remove after a short delay to free up memory
-        setTimeout(() => {
-          if (document.body.contains(preloadVideo)) {
-            document.body.removeChild(preloadVideo);
-          }
-        }, 30000);
-      }
-    }
+    // No-op: video URLs are fetched dynamically
   }, [currentEpisodeIndex, allEpisodes]);
 
   useEffect(() => {
@@ -65,12 +55,11 @@ export default function PlayerContent() {
     if (user) {
       getProfile(user.id).then(setProfile);
     }
-  }, [user]);
+  }, [user, isPremium]);
 
   const contentId = searchParams.get('id');
   const contentType = searchParams.get('type');
   const episodeId = searchParams.get('episodeId');
-  const urlParam = searchParams.get('url');
   const seasonParam = searchParams.get('season');
   const episodeParam = searchParams.get('episode');
 
@@ -87,137 +76,70 @@ export default function PlayerContent() {
         return;
       }
 
+      const fetchKey = `${contentId}-${contentType}-${episodeId ?? 'none'}-${seasonParam ?? ''}-${episodeParam ?? ''}`;
+      if (streamFetchedRef.current === fetchKey) {
+        return;
+      }
+
       try {
-        let videoUrl = '';
         let contentTitle = '';
         let contentInfo: any = null;
+        let actualSeriesId = contentId;
+        let seasonNum = 1;
+        let episodeNum = 1;
 
         if (contentType === 'movie') {
-          // If URL is provided directly, use it
-          if (urlParam) {
-            videoUrl = decodeURIComponent(urlParam);
-            // Try to get movie title from Reelpexi
-            try {
-              const movieData = await fetch(`/api/reelplexi/movie?id=${contentId}`);
-              if (movieData.ok) {
-                const { movie: movieDetails } = await movieData.json();
-                if (movieDetails) {
-                  contentTitle = movieDetails.title || 'Movie';
-                  contentInfo = { id: contentId, premium: movieDetails.premium || false, title: movieDetails.title };
-                }
-              }
-            } catch (err) {
-              console.warn('Could not fetch movie title from Reelpexi:', err);
-              contentTitle = 'Movie';
-              contentInfo = { id: contentId, premium: false };
-            }
-          } else {
-            // Fallback: try Supabase
-            const { data: movie, error } = await supabase
-              .from('movies')
-              .select('id, title, video_url, published, premium')
-              .eq('id', contentId)
-              .eq('published', true)
-              .single();
+          // Fetch movie display data from ReelPlexi API
+          const movie = await getMovieById(contentId);
 
-            if (error || !movie) {
-              throw new Error('Movie not found or not published');
-            }
-
-            contentInfo = movie;
-            videoUrl = movie.video_url;
-            contentTitle = movie.title;
+          if (!movie) {
+            throw new Error('Movie not found or not published');
           }
+
+          contentInfo = movie;
+          contentTitle = movie.title;
 
         } else if (contentType === 'series') {
-          // Check if we have season/episode params (new format from Reelplexi)
           if (seasonParam && episodeParam) {
-            // Fetch the stream URL securely from our server-side API (never expose it via URL params)
-            try {
-              const streamRes = await fetch(`/api/reelplexi/stream?id=${encodeURIComponent(contentId)}&type=episode&season=${seasonParam}&episode=${episodeParam}`);
-              if (streamRes.ok) {
-                const streamData = await streamRes.json();
-                if (streamData.success && streamData.stream_url) {
-                  videoUrl = streamData.stream_url;
-                }
-              }
-            } catch (e) {
-              console.warn('Could not fetch secure episode stream:', e);
-            }
-            contentTitle = `Episode ${episodeParam}`;
-            contentInfo = { id: contentId, premium: false };
-            
-            // Store series ID
-            setSeriesId(contentId);
-          } else if (!episodeId && !seasonParam) {
-            throw new Error('Episode ID or season/episode parameters required for series streaming');
-          } else if (episodeId) {
-            // Old format - fetch from Supabase
-            const { data: episode, error: episodeError } = await supabase
-              .from('episodes')
-              .select(`
-                id,
-                title,
-                video_url,
-                published,
-                premium,
-                episode_number,
-                season_id
-              `)
-              .eq('id', episodeId)
-              .eq('published', true)
-              .single();
-
-            if (episodeError || !episode) {
-              console.error('Episode fetch error:', episodeError);
-              console.error('Episode ID:', episodeId);
-              throw new Error('Episode not found or not published');
-            }
-
-            // Fetch season info
-            const { data: season, error: seasonError } = await supabase
-              .from('seasons')
-              .select(`
-                id,
-                name,
-                order,
-                series_id
-              `)
-              .eq('id', episode.season_id)
-              .single();
-
-            let seriesData = null;
-            let seriesIdValue = null;
-
-            if (season && !seasonError) {
-              const { data: series, error: seriesError } = await supabase
-                .from('series')
-                .select('id, title')
-                .eq('id', season.series_id)
-                .single();
-
-              if (series && !seriesError) {
-                seriesData = series;
-                seriesIdValue = series.id;
-              } else {
-                seriesIdValue = season.series_id;
-              }
-            }
-
-            contentInfo = episode;
-            videoUrl = episode.video_url;
-            contentTitle = `${seriesData?.title || 'Series'} - ${season?.name || 'Season'} - ${episode.title}`;
-
-            // Store series ID
-            setSeriesId(seriesIdValue);
-
-            // Fetch all episodes
-            if (seriesIdValue) {
-              await fetchAllEpisodes(seriesIdValue, episodeId);
-            } else if (contentId) {
-              await fetchAllEpisodes(contentId, episodeId);
-            }
+            seasonNum = parseInt(seasonParam, 10);
+            episodeNum = parseInt(episodeParam, 10);
+          } else if (episodeId && episodeId.includes(':season:')) {
+            const parts = episodeId.split(':');
+            actualSeriesId = parts[0];
+            seasonNum = parseInt(parts[2], 10);
+            episodeNum = parseInt(parts[4], 10);
+          } else if (!episodeId) {
+            throw new Error('Episode parameters required for series streaming');
           }
+
+          const seriesData = await getSeriesById(actualSeriesId);
+          if (!seriesData) {
+            throw new Error('Series not found or not published');
+          }
+
+          const episodes = await getEpisodes(actualSeriesId, seasonNum);
+          const episode = episodes.find((e: any) => e.episode_number === episodeNum) || episodes[0];
+
+          if (!episode) {
+            throw new Error('Episode not found or not published');
+          }
+
+          contentInfo = { ...episode, seasonOrder: seasonNum };
+          contentTitle = `${seriesData.title || 'Series'} - Season ${seasonNum} - ${episode.title}`;
+
+          // Store series ID for episode navigation
+          setSeriesId(actualSeriesId);
+
+          // Set all episodes for navigation
+          const allEps = episodes.map((e: any) => ({
+             ...e,
+             seasonName: `Season ${seasonNum}`,
+             seasonOrder: seasonNum,
+             season_id: `${actualSeriesId}:season:${seasonNum}`
+          })) as unknown as EpisodeWithSeason[];
+          setAllEpisodes(allEps);
+          const currentIndex = allEps.findIndex(e => e.id === episode.id || e.episode_number === episodeNum);
+          setCurrentEpisodeIndex(currentIndex >= 0 ? currentIndex : 0);
         }
 
         setContentData(contentInfo);
@@ -230,20 +152,21 @@ export default function PlayerContent() {
           return;
         }
 
-        if (!videoUrl) {
+        let finalStreamUrl = null;
+        if (contentType === 'movie') {
+           const streamData = await getMovieStream(contentId);
+           finalStreamUrl = streamData?.video_url;
+        } else {
+           const streamData = await getEpisodeStream(seriesId || actualSeriesId, seasonNum, episodeNum);
+           finalStreamUrl = streamData?.video_url;
+        }
+
+        if (!finalStreamUrl) {
           throw new Error('No video URL available');
         }
 
-        console.log('🎬 PlayerContent URL:', videoUrl);
-
-        // Route the URL to the correct player path:
-        // 1. embed.reelplexi.com → iframe (X-Frame-Options permitting)
-        // 2. Direct Video Stream URLs → route through /api/stream proxy to prevent CORS errors
-        if (videoUrl.includes('embed.reelplexi.com')) {
-          setStreamUrl(videoUrl); // Iframe player
-        } else {
-          setStreamUrl(normalizeVideoUrl(videoUrl)); // Route through /api/stream proxy to handle CORS and authentication
-        }
+        streamFetchedRef.current = fetchKey;
+        setStreamUrl(finalStreamUrl);
         setTitle(contentTitle);
         setLoading(false);
 
@@ -255,93 +178,7 @@ export default function PlayerContent() {
     };
 
     fetchStreamUrl();
-  }, [contentId, contentType, episodeId, user, authLoading, isPremium]);
-
-  // Fetch all episodes for navigation
-  const fetchAllEpisodes = async (seriesId: string, currentEpisodeId: string) => {
-    try {
-      // First get seasons
-      const { data: seasons, error: seasonsError } = await supabase
-        .from('seasons')
-        .select(`
-          id,
-          name,
-          order
-        `)
-        .eq('series_id', seriesId)
-        .eq('published', true)
-        .order('order', { ascending: true });
-
-      if (seasonsError) {
-        console.error('Error fetching seasons for navigation:', seasonsError);
-        console.error('Series ID:', seriesId);
-        return;
-      }
-
-
-
-      // Then get episodes for each season
-      const seasonsWithEpisodes = [];
-
-      for (const season of seasons || []) {
-        const { data: episodes, error: episodesError } = await supabase
-          .from('episodes')
-          .select(`
-            id,
-            title,
-            video_url,
-            published,
-            premium,
-            episode_number,
-            thumbnail_url
-          `)
-          .eq('season_id', season.id)
-          .eq('published', true)
-          .order('episode_number', { ascending: true });
-
-        if (episodesError) {
-          console.error(`Error fetching episodes for season ${season.id}:`, episodesError);
-          continue;
-        }
-
-        seasonsWithEpisodes.push({
-          ...season,
-          episodes: episodes || []
-        });
-      }
-
-
-
-      // Flatten all episodes with season info
-      const allEpisodesArray: EpisodeWithSeason[] = [];
-      let currentIndex = -1;
-
-      seasonsWithEpisodes.forEach(season => {
-        if (season.episodes) {
-          season.episodes
-            .filter((ep: any) => ep.published && ep.video_url)
-            .forEach((episode: any) => {
-              const episodeWithSeason: EpisodeWithSeason = {
-                ...episode,
-                seasonName: season.name || `Season ${season.order}`,
-                seasonOrder: season.order
-              };
-
-              if (episode.id === currentEpisodeId) {
-                currentIndex = allEpisodesArray.length;
-              }
-
-              allEpisodesArray.push(episodeWithSeason);
-            });
-        }
-      });
-
-      setAllEpisodes(allEpisodesArray);
-      setCurrentEpisodeIndex(currentIndex);
-    } catch (error) {
-      console.error('Error fetching all episodes:', error);
-    }
-  };
+  }, [contentId, contentType, episodeId, seasonParam, episodeParam, user?.id, authLoading]);
 
   // Switch to episode directly without page navigation
   const switchToEpisode = async (episode: EpisodeWithSeason) => {
@@ -357,30 +194,27 @@ export default function PlayerContent() {
         return;
       }
 
-      if (!episode.video_url) {
+      // Update URL without full reload
+      const newUrl = `/player?id=${seriesId || contentId}&type=series&season=${episode.seasonOrder || 1}&episode=${episode.episode_number}`;
+      window.history.replaceState({}, '', newUrl);
+
+      // Fetch video URL from ReelPlexi API
+      const streamData = await getEpisodeStream(seriesId || contentId || '', episode.seasonOrder || 1, episode.episode_number);
+
+      if (!streamData || !streamData.video_url) {
         setError('This episode is not available for watching');
         setSwitchingEpisode(false);
         return;
       }
-
-      // Update URL without navigation
-      const newUrl = `/player?id=${seriesId || contentId}&type=series&episodeId=${episode.id}`;
-      window.history.replaceState({}, '', newUrl);
-
-      // Process video URL through proxy
-      let videoUrl = episode.video_url;
-      console.log('🔄 Switching episode with proxy URL');
+      
+      const videoUrl = streamData.video_url;
 
       // Update current episode index
-      const newIndex = allEpisodes.findIndex(ep => ep.id === episode.id);
-      setCurrentEpisodeIndex(newIndex);
+      const newIndex = allEpisodes.findIndex(ep => ep.id === episode.id || ep.episode_number === episode.episode_number);
+      setCurrentEpisodeIndex(newIndex >= 0 ? newIndex : 0);
 
-      // Update stream URL and title - same routing logic as main player
-      if (videoUrl.includes('embed.reelplexi.com')) {
-        setStreamUrl(videoUrl); // Iframe player
-      } else {
-        setStreamUrl(normalizeVideoUrl(videoUrl)); // Route through /api/stream proxy to handle CORS and authentication
-      }
+      // Update stream URL and title
+      setStreamUrl(videoUrl);
       setTitle(`${contentData?.title || 'Series'} - ${episode.seasonName} - ${episode.title}`);
       setSwitchingEpisode(false);
 
@@ -391,7 +225,6 @@ export default function PlayerContent() {
     }
   };
 
-  // Navigate to next episode
   const handleNextEpisode = () => {
     if (currentEpisodeIndex >= 0 && currentEpisodeIndex < allEpisodes.length - 1) {
       const nextEpisode = allEpisodes[currentEpisodeIndex + 1];
@@ -399,7 +232,6 @@ export default function PlayerContent() {
     }
   };
 
-  // Navigate to previous episode
   const handlePreviousEpisode = () => {
     if (currentEpisodeIndex > 0) {
       const prevEpisode = allEpisodes[currentEpisodeIndex - 1];
@@ -407,48 +239,38 @@ export default function PlayerContent() {
     }
   };
 
-  // Handle video end - show next episode prompt
   const handleVideoEnd = useCallback(() => {
     if (contentType === 'series' && currentEpisodeIndex >= 0 && currentEpisodeIndex < allEpisodes.length - 1) {
       setShowNextEpisodePrompt(true);
     }
   }, [contentType, currentEpisodeIndex, allEpisodes.length]);
 
-  // Auto-play next episode
   const handleAutoPlayNext = () => {
     setShowNextEpisodePrompt(false);
     handleNextEpisode();
   };
 
-  // Get current episode info
   const getCurrentEpisode = () => {
     return currentEpisodeIndex >= 0 ? allEpisodes[currentEpisodeIndex] : null;
   };
 
-  // Get next episode info
   const getNextEpisode = () => {
     return currentEpisodeIndex >= 0 && currentEpisodeIndex < allEpisodes.length - 1
       ? allEpisodes[currentEpisodeIndex + 1]
       : null;
   };
 
-  // Navigate to specific episode from list
   const handleEpisodeSelect = (episode: EpisodeWithSeason) => {
     switchToEpisode(episode);
   };
 
   const handleVideoError = (error: any) => {
-    console.error('Video player error:', error);
-    console.error('Stream URL:', streamUrl);
-    console.error('Content ID:', contentId);
-    console.error('Content Type:', contentType);
-    console.error('Episode ID:', episodeId);
+    console.error('Video player error:', error?.message || 'Unknown');
     setError('Failed to play video. Check console for details.');
   };
 
   const handleVideoLoad = () => {
     console.log('Video loaded successfully');
-    console.log('Stream URL:', streamUrl);
     setError(null);
   };
 
@@ -456,7 +278,11 @@ export default function PlayerContent() {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center px-4">
         <div className="text-center text-white max-w-sm w-full">
-          <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <span className="inline-flex items-center justify-center font-bold tracking-widest text-2xl text-[#E50914]">
+            <span className="animate-bounce" style={{ animationDelay: "0ms" }}>.</span>
+            <span className="animate-bounce" style={{ animationDelay: "150ms" }}>.</span>
+            <span className="animate-bounce" style={{ animationDelay: "300ms" }}>.</span>
+          </span>
           <h2 className="text-lg sm:text-xl font-semibold mb-2">Loading Video...</h2>
           <p className="text-sm sm:text-base text-gray-400">Please wait while we prepare your stream</p>
         </div>
@@ -474,7 +300,7 @@ export default function PlayerContent() {
           <div className="space-y-3">
             <Button
               onClick={() => window.location.reload()}
-              className="w-full bg-orange-500 hover:bg-orange-600 h-11 text-base font-medium"
+              className="w-full bg-[#E50914] hover:bg-[#b80710] h-11 text-base font-medium"
             >
               Try Again
             </Button>
@@ -499,7 +325,7 @@ export default function PlayerContent() {
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col">
-      {/* Simplified Top Navigation */}
+      {/* Top Navigation */}
       <div className="absolute top-2 left-2 z-50">
         <Button
           onClick={() => {
@@ -523,7 +349,11 @@ export default function PlayerContent() {
         {switchingEpisode && (
           <div className="absolute inset-0 bg-black/80 z-40 flex items-center justify-center">
             <div className="text-center text-white">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+              <span className="inline-flex items-center justify-center font-bold tracking-widest text-2xl text-[#E50914]">
+                <span className="animate-bounce" style={{ animationDelay: "0ms" }}>.</span>
+                <span className="animate-bounce" style={{ animationDelay: "150ms" }}>.</span>
+                <span className="animate-bounce" style={{ animationDelay: "300ms" }}>.</span>
+              </span>
               <p className="text-lg font-semibold">Switching Episode...</p>
             </div>
           </div>
@@ -597,9 +427,9 @@ export default function PlayerContent() {
 
                     return (
                       <div
-                        key={episode.id}
+                        key={episode.id || index}
                         className={`group p-2 rounded cursor-pointer transition-colors ${isCurrentEpisode
-                          ? 'bg-orange-500/20 border border-orange-500/30'
+                          ? 'bg-[#E50914]/20 border border-[#E50914]/30'
                           : canAccess
                             ? 'hover:bg-gray-800'
                             : 'opacity-60'
@@ -615,7 +445,6 @@ export default function PlayerContent() {
                                 alt={episode.title}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                  // Fallback to episode number if image fails to load
                                   e.currentTarget.style.display = 'none';
                                   e.currentTarget.nextElementSibling?.classList.remove('hidden');
                                 }}
@@ -623,13 +452,12 @@ export default function PlayerContent() {
                             ) : null}
                             <div className={`${episode.thumbnail_url ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
                               <div className={`w-6 h-4 rounded flex items-center justify-center text-xs font-bold ${isCurrentEpisode
-                                ? 'bg-orange-500 text-white'
+                                ? 'bg-[#E50914] text-white'
                                 : 'bg-gray-600 text-gray-300'
                                 }`}>
                                 {episode.episode_number}
                               </div>
                             </div>
-                            {/* Play indicator overlay */}
                             {isCurrentEpisode && (
                               <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                                 <Play className="w-3 h-3 text-white" />
@@ -645,12 +473,12 @@ export default function PlayerContent() {
                                   {episode.title}
                                 </span>
                                 {isPremiumEpisode && (
-                                  <span className="text-xs bg-orange-500 text-white px-1 py-0.5 rounded flex-shrink-0">
+                                  <span className="text-xs bg-[#E50914] text-white px-1 py-0.5 rounded flex-shrink-0">
                                     Premium
                                   </span>
                                 )}
                                 {isCurrentEpisode && (
-                                  <Play className="w-3 h-3 text-orange-500 flex-shrink-0" />
+                                  <Play className="w-3 h-3 text-[#E50914] flex-shrink-0" />
                                 )}
                               </div>
                               <div className="text-xs text-gray-400">
@@ -662,18 +490,37 @@ export default function PlayerContent() {
                                 </div>
                               )}
                             </div>
-                            
-                            {/* Download Button (shows on hover) */}
+
+                            {/* Download Button */}
                             {canAccess && (
                               <button
                                 className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-white transition-opacity shrink-0"
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                   e.stopPropagation();
                                   const cleanTitle = episode.title ? episode.title.replace(/[^a-zA-Z0-9\s\-_.]/g, '').trim() : 'episode';
                                   const filename = `${cleanTitle}.mp4`;
-                                  // Use our same-origin proxy to force download instead of inline playback
-                                  const proxyUrl = `/api/download?id=${seriesId || contentId}&type=episode&season=${episode.seasonOrder}&episode=${episode.episode_number}&filename=${encodeURIComponent(filename)}`;
-                                  window.open(proxyUrl, '_blank');
+                                  
+                                  const isIOS = isIOSDevice();
+                                  
+                                  if (isIOS) {
+                                    try {
+                                      const response = await fetch(`/api/download?id=${seriesId || contentId}&type=episode&season=${episode.seasonOrder || 1}&episode=${episode.episode_number}&filename=${encodeURIComponent(filename)}`);
+                                      const data = await response.json();
+                                      
+                                      if (data.downloadUrl) {
+                                        setIOSDownloadInfo({
+                                          url: data.downloadUrl,
+                                          filename: filename
+                                        });
+                                        setShowIOSDownloadModal(true);
+                                      }
+                                    } catch (error) {
+                                      alert('Failed to get download link. Please try again.');
+                                    }
+                                  } else {
+                                    const proxyUrl = `/api/download?id=${seriesId || contentId}&type=episode&season=${episode.seasonOrder || 1}&episode=${episode.episode_number}&filename=${encodeURIComponent(filename)}`;
+                                    window.open(proxyUrl, '_blank');
+                                  }
                                 }}
                                 title="Download"
                               >
@@ -692,12 +539,11 @@ export default function PlayerContent() {
         </div>
       )}
 
-
       {/* Next Episode Prompt Modal */}
       {showNextEpisodePrompt && nextEpisode && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-xl border border-orange-400 shadow-xl max-w-md w-full text-center p-6">
-            <h2 className="text-2xl font-bold mb-3 text-orange-400">Episode Ended</h2>
+          <div className="bg-gray-900 rounded-xl border border-[#E50914] shadow-xl max-w-md w-full text-center p-6">
+            <h2 className="text-2xl font-bold mb-3 text-[#E50914]">Episode Ended</h2>
             <p className="mb-4 text-gray-200">
               Up next: <span className="font-semibold">{nextEpisode.seasonName} - Episode {nextEpisode.episode_number}</span>
             </p>
@@ -706,7 +552,7 @@ export default function PlayerContent() {
             <div className="flex gap-3">
               <Button
                 onClick={handleAutoPlayNext}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 h-12 text-base font-medium"
+                className="flex-1 bg-[#E50914] hover:bg-[#b80710] h-12 text-base font-medium"
               >
                 <Play className="w-5 h-5 mr-2" />
                 Play Next Episode
@@ -730,6 +576,19 @@ export default function PlayerContent() {
         action="play"
         requirePremium={Boolean(contentData?.premium)}
       />
+
+      {/* iOS Download Modal */}
+      {iosDownloadInfo && (
+        <IOSDownloadModal
+          isOpen={showIOSDownloadModal}
+          onClose={() => {
+            setShowIOSDownloadModal(false);
+            setIOSDownloadInfo(null);
+          }}
+          downloadUrl={iosDownloadInfo.url}
+          filename={iosDownloadInfo.filename}
+        />
+      )}
     </div>
   );
 }

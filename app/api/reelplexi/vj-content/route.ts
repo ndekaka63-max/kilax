@@ -9,16 +9,16 @@ export async function GET(request: Request) {
     const movies = await ReelplexiService.getMovies(1, limit)
     const series = await ReelplexiService.getSeries(1, limit)
 
-    const vjMovies = movies.filter(movie => movie.vjs?.name).slice(0, Math.ceil(limit / 2))
-    const vjSeries = series.filter(show => show.vjs?.name).slice(0, Math.ceil(limit / 2))
+    const vjMovies = movies.filter((movie: any) => movie.vjs?.name).slice(0, Math.ceil(limit / 2))
+    const vjSeries = series.filter((show: any) => show.vjs?.name).slice(0, Math.ceil(limit / 2))
 
     const combined = [
-      ...vjMovies.map(item => ({ 
+      ...vjMovies.map((item: any) => ({ 
         ...item, 
         type: 'movie' as const,
         created_at: item.release_date || new Date().toISOString(),
       })),
-      ...vjSeries.map(item => ({ 
+      ...vjSeries.map((item: any) => ({ 
         ...item, 
         type: 'series' as const,
         created_at: item.first_air_date || new Date().toISOString(),

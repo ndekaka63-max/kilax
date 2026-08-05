@@ -39,7 +39,6 @@ export async function GET(request: Request) {
       success: true,
       stream_url: streamData.stream_url,
       proxy_url: streamData.proxy_url,
-      expires_at: streamData.expires_at
     })
   } catch (error) {
     console.error('Error fetching stream URL:', error)

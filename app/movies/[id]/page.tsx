@@ -46,16 +46,22 @@ export default function MovieDetailsPage() {
         return;
       }
 
-      const data = await getMovieByIdClient(params.id as string);
+      const movieData = await getMovieByIdClient(params.id as string);
 
-      if (!data || !data.movie) {
+      if (!movieData) {
         setError("Movie not found");
         setLoading(false);
         return;
       }
 
-      setMovie(data.movie);
-      setRelated(data.related || []);
+      setMovie(movieData);
+      try {
+        const { getRelatedMoviesByGenre } = await import("@/lib/api");
+        const relatedData = await getRelatedMoviesByGenre(params.id as string, movieData.genre_ids || []);
+        setRelated(relatedData || []);
+      } catch {
+        setRelated([]);
+      }
       setLoading(false);
     }
     fetchMovieData();
