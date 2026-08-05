@@ -2,22 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getMovieStream, getEpisodeStream } from '@/lib/api'
 
-function buildStreamProxyUrl(videoUrl: string): string {
-  let rawUrl = videoUrl
-
-  try {
-    rawUrl = decodeURIComponent(videoUrl)
-  } catch {
-    rawUrl = videoUrl
-  }
-
-  if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
-    rawUrl = `https://${rawUrl}`
-  }
-
-  return `/api/stream?url=${encodeURIComponent(rawUrl)}`
-}
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -42,10 +26,13 @@ export async function GET(request: NextRequest) {
       }
 
       const reelplexiStream = await getMovieStream(movie.id)
-      const streamUrl = reelplexiStream?.video_url || (movie.video_url ? buildStreamProxyUrl(movie.video_url) : null)
+      const streamUrl = reelplexiStream?.video_url || null
 
       if (!streamUrl) {
-        return NextResponse.json({ error: 'No stream URL available' }, { status: 404 })
+        return NextResponse.json({
+          error: 'No Reelplexi stream URL available',
+          hint: 'Set REELPLEXI_API_KEY in the deployment environment and ensure the movie has a Reelplexi stream endpoint.'
+        }, { status: 500 })
       }
 
       return NextResponse.json({
@@ -97,10 +84,13 @@ export async function GET(request: NextRequest) {
       const seasonOrder = season.order || 1
       const seriesId = season.series_id || contentId
       const reelplexiStream = await getEpisodeStream(seriesId, seasonOrder, episode.episode_number)
-      const streamUrl = reelplexiStream?.video_url || (episode.video_url ? buildStreamProxyUrl(episode.video_url) : null)
+      const streamUrl = reelplexiStream?.video_url || null
 
       if (!streamUrl) {
-        return NextResponse.json({ error: 'No stream URL available' }, { status: 404 })
+        return NextResponse.json({
+          error: 'No Reelplexi stream URL available',
+          hint: 'Set REELPLEXI_API_KEY in the deployment environment and ensure the episode has a Reelplexi stream endpoint.'
+        }, { status: 500 })
       }
 
       return NextResponse.json({

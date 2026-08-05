@@ -52,3 +52,12 @@ preferred ones.
 
 When present, server API routes will use the service role key for admin lookups. If
 it is not set the code will fall back to checking the `profiles` table where possible.
+
+Video streaming also requires one of the following backend configurations:
+
+1. `REELPLEXI_API_KEY` for the Reelplexi stream resolver used by `/api/content-stream`.
+2. `VIDEO_AUTH_USERNAME` and `VIDEO_AUTH_PASSWORD` for the authenticated raw stream proxy used by `/api/stream`.
+
+If you want movie and episode playback to match the working `katiwatch` flow, set
+`REELPLEXI_API_KEY` in the deployment environment so the server can resolve a real
+playable stream URL instead of falling back to the raw file proxy.

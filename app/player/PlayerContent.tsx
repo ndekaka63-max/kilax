@@ -71,29 +71,10 @@ export default function PlayerContent() {
     return payload.streamUrl as string;
   };
 
-  // Preload next episode for faster switching
+  // Preloading disabled — the working flow resolves streams on demand.
   const preloadNextEpisode = useCallback(() => {
-    if (currentEpisodeIndex >= 0 && currentEpisodeIndex < allEpisodes.length - 1) {
-      const nextEpisode = allEpisodes[currentEpisodeIndex + 1];
-      if (nextEpisode?.video_url) {
-        // Create a hidden video element to preload the next episode
-        const preloadVideo = document.createElement('video');
-        preloadVideo.preload = 'metadata';
-
-        // Preload using the same authenticated proxy path as the main player.
-        preloadVideo.src = buildStreamProxyUrl(nextEpisode.video_url);
-        preloadVideo.style.display = 'none';
-        document.body.appendChild(preloadVideo);
-
-        // Remove after a short delay to free up memory
-        setTimeout(() => {
-          if (document.body.contains(preloadVideo)) {
-            document.body.removeChild(preloadVideo);
-          }
-        }, 30000); // 30 seconds
-      }
-    }
-  }, [currentEpisodeIndex, allEpisodes]);
+    // No-op: avoid creating hidden raw stream requests that can fail on MKV sources.
+  }, []);
 
   useEffect(() => {
     if (!switchingEpisode && streamUrl) {
@@ -240,9 +221,9 @@ export default function PlayerContent() {
           throw new Error('No video URL available');
         }
 
-        const resolvedStreamUrl = await resolveStreamUrl(contentType, contentId, episodeId);
         streamFetchedRef.current = fetchKey;
-        setStreamUrl(resolvedStreamUrl || buildStreamProxyUrl(videoUrl));
+        const resolvedStreamUrl = await resolveStreamUrl(contentType, contentId, episodeId);
+        setStreamUrl(resolvedStreamUrl);
         setTitle(contentTitle);
         setLoading(false);
 
@@ -373,8 +354,7 @@ export default function PlayerContent() {
       const newUrl = `/player?id=${seriesId || contentId}&type=series&episodeId=${episode.id}`;
       window.history.replaceState({}, '', newUrl);
 
-      // Process video URL through server-side proxy
-      const streamUrl = buildStreamProxyUrl(episode.video_url);
+      const streamUrl = await resolveStreamUrl('series', seriesId || contentId, episode.id);
 
       // Update current episode index
       const newIndex = allEpisodes.findIndex(ep => ep.id === episode.id);
