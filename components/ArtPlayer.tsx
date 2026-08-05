@@ -180,7 +180,15 @@ export function ArtPlayer({ url, poster, title, className, onEnded, episodes = [
 
     // Add error handling
     art.on('error', (error) => {
-      console.error('ArtPlayer error:', { error, url: authenticatedUrl })
+      console.error('ArtPlayer playback error', {
+        error,
+        url: authenticatedUrl,
+        videoElementSrc: art.video?.currentSrc,
+        networkState: art.video?.networkState,
+        readyState: art.video?.readyState,
+        errorCode: art.video?.error?.code,
+        errorMessage: art.video?.error?.message
+      })
     })
 
     art.on('ready', () => {

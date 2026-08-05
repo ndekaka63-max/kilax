@@ -92,7 +92,13 @@ export async function getReelplexiMovieStream(id: string) {
       proxy_url: streamData.proxy_url || url,
       video_url: url,
     }
-  } catch {
+  } catch (error) {
+    console.error('Reelplexi: movie stream fetch failed', {
+      id,
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return null
   }
 }
@@ -107,7 +113,15 @@ export async function getReelplexiEpisodeStream(seriesId: string, season: number
       proxy_url: streamData.proxy_url || url,
       video_url: url,
     }
-  } catch {
+  } catch (error) {
+    console.error('Reelplexi: episode stream fetch failed', {
+      seriesId,
+      season,
+      episode,
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return null
   }
 }

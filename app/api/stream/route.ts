@@ -72,11 +72,18 @@ export async function GET(request: NextRequest) {
     });
 
     if (!videoResponse.ok) {
-      console.error('Stream API: Upstream fetch failed:', videoResponse.status, videoResponse.statusText);
+      const responseText = await videoResponse.text().catch(() => '');
+      console.error('Stream API: Upstream fetch failed', {
+        url: fetchUrl,
+        status: videoResponse.status,
+        statusText: videoResponse.statusText,
+        responseText
+      });
       return NextResponse.json({
         error: 'Video fetch failed',
         status: videoResponse.status,
-        statusText: videoResponse.statusText
+        statusText: videoResponse.statusText,
+        responseText
       }, { status: videoResponse.status });
     }
 
@@ -127,7 +134,11 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Stream API: Internal error:', error);
+    console.error('Stream API: Internal error', {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json({ 
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

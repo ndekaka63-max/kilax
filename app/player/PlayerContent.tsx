@@ -240,7 +240,14 @@ export default function PlayerContent() {
         setLoading(false);
 
       } catch (err) {
-        console.error('Error fetching stream URL:', err);
+        console.error('Error fetching stream URL', {
+          err,
+          message: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined,
+          contentId,
+          contentType,
+          episodeId
+        });
         setError(err instanceof Error ? err.message : 'Failed to setup stream');
         setLoading(false);
       }
