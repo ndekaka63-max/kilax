@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
         'Content-Type': 'application/json'
       }
     });
-    
+
     // Check if the response is JSON or something else
     const contentType = res.headers.get('Content-Type') || '';
     if (contentType.includes('application/json')) {

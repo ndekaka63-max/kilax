@@ -132,14 +132,14 @@ export async function getTranslatedSeries(limit = 6) {
 export async function getTranslatedContent(limit = 12) {
   const movies = await getTranslatedMovies(limit);
   const series = await getTranslatedSeries(limit);
-  
+
   const combined = [];
   const maxLength = Math.max(movies.length, series.length);
   for (let i = 0; i < maxLength; i++) {
     if (movies[i]) combined.push(movies[i]);
     if (series[i]) combined.push(series[i]);
   }
-  
+
   return combined.slice(0, limit);
 }
 
@@ -166,14 +166,14 @@ export async function getVJSeries(limit = 6) {
 export async function getVJContent(limit = 12) {
   const movies = await getVJMovies(limit);
   const series = await getVJSeries(limit);
-  
+
   const combined = [];
   const maxLength = Math.max(movies.length, series.length);
   for (let i = 0; i < maxLength; i++) {
     if (movies[i]) combined.push(movies[i]);
     if (series[i]) combined.push(series[i]);
   }
-  
+
   return combined.slice(0, limit);
 }
 
@@ -191,11 +191,11 @@ export async function getGenreRowsForHome(limit = 12) {
   try {
     const genres = await getGenres();
     let genreRows: any[] = [];
-    
+
     if (genres && genres.length > 0) {
       // Take top 3 genres
       const topGenres = genres.slice(0, 3);
-      
+
       const fetchedRows = await Promise.all(
         topGenres.map(async (genre) => {
           try {
@@ -214,17 +214,17 @@ export async function getGenreRowsForHome(limit = 12) {
           }
         })
       );
-      
+
       genreRows = fetchedRows.filter(row => row.movies.length > 0 || row.series.length > 0);
     }
-    
+
     // Fallback: If API returned no genres, build them from recent content
     if (!genreRows || genreRows.length === 0) {
       console.log('Using fallback genre row generation from recent content');
       const allMovies = await getMovies(limit * 2);
       const allSeries = await getSeries(limit * 2);
       const allContent = [...allMovies, ...allSeries];
-      
+
       const genreMap = new Map<string, any[]>();
       allContent.forEach(item => {
         if (item.genre_ids && Array.isArray(item.genre_ids)) {
@@ -237,7 +237,7 @@ export async function getGenreRowsForHome(limit = 12) {
           });
         }
       });
-      
+
       const extractedGenres = Array.from(genreMap.entries())
         .map(([name, content]) => ({
           name,
@@ -246,10 +246,10 @@ export async function getGenreRowsForHome(limit = 12) {
         }))
         .sort((a, b) => (b.movies.length + b.series.length) - (a.movies.length + a.series.length))
         .slice(0, 3);
-        
+
       genreRows = extractedGenres.filter(g => g.movies.length >= 2 || g.series.length >= 2);
     }
-    
+
     return genreRows;
   } catch (error) {
     console.error('Error fetching genre rows for home:', error);
@@ -323,7 +323,7 @@ export async function getRelatedMoviesByGenre(movieId: string, genreIds: string[
     if (movies && movies.length > 0) {
       return movies as Movie[];
     }
-    
+
     // Fallback logic if API returns empty
     const allMovies = await getMovies(50, 1);
     const related = allMovies
@@ -343,7 +343,7 @@ export async function getRelatedSeriesByGenre(seriesId: string, genreIds: string
     if (series && series.length > 0) {
       return series as Series[];
     }
-    
+
     // Fallback logic if API returns empty
     const allSeries = await getSeries(50, 1);
     const related = allSeries

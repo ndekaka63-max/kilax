@@ -12,7 +12,7 @@ export function setRedirectCookie(path: string, maxAgeSeconds = 600) {
     console.warn('Invalid redirect path:', path);
     return;
   }
-  
+
   // Ensure path is relative (doesn't include domain)
   let validPath = path;
   try {
@@ -25,13 +25,13 @@ export function setRedirectCookie(path: string, maxAgeSeconds = 600) {
     console.warn('Could not parse redirect path:', path, e);
     return;
   }
-  
+
   // Only set cookie for valid relative paths
   if (!validPath.startsWith('/')) {
     console.warn('Redirect path must be relative:', validPath);
     return;
   }
-  
+
   const encoded = encodeURIComponent(validPath)
   const cookieValue = `redirectAfterAuth=${encoded}; path=/; max-age=${maxAgeSeconds}`
   if (typeof window !== 'undefined' && window.location.protocol === 'https:') {

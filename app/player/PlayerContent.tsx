@@ -132,10 +132,10 @@ export default function PlayerContent() {
 
           // Set all episodes for navigation
           const allEps = episodes.map((e: any) => ({
-             ...e,
-             seasonName: `Season ${seasonNum}`,
-             seasonOrder: seasonNum,
-             season_id: `${actualSeriesId}:season:${seasonNum}`
+            ...e,
+            seasonName: `Season ${seasonNum}`,
+            seasonOrder: seasonNum,
+            season_id: `${actualSeriesId}:season:${seasonNum}`
           })) as unknown as EpisodeWithSeason[];
           setAllEpisodes(allEps);
           const currentIndex = allEps.findIndex(e => e.id === episode.id || e.episode_number === episodeNum);
@@ -154,11 +154,11 @@ export default function PlayerContent() {
 
         let finalStreamUrl = null;
         if (contentType === 'movie') {
-           const streamData = await getMovieStream(contentId);
-           finalStreamUrl = streamData?.video_url;
+          const streamData = await getMovieStream(contentId);
+          finalStreamUrl = streamData?.video_url;
         } else {
-           const streamData = await getEpisodeStream(seriesId || actualSeriesId, seasonNum, episodeNum);
-           finalStreamUrl = streamData?.video_url;
+          const streamData = await getEpisodeStream(seriesId || actualSeriesId, seasonNum, episodeNum);
+          finalStreamUrl = streamData?.video_url;
         }
 
         if (!finalStreamUrl) {
@@ -206,7 +206,7 @@ export default function PlayerContent() {
         setSwitchingEpisode(false);
         return;
       }
-      
+
       const videoUrl = streamData.video_url;
 
       // Update current episode index
@@ -499,14 +499,14 @@ export default function PlayerContent() {
                                   e.stopPropagation();
                                   const cleanTitle = episode.title ? episode.title.replace(/[^a-zA-Z0-9\s\-_.]/g, '').trim() : 'episode';
                                   const filename = `${cleanTitle}.mp4`;
-                                  
+
                                   const isIOS = isIOSDevice();
-                                  
+
                                   if (isIOS) {
                                     try {
                                       const response = await fetch(`/api/download?id=${seriesId || contentId}&type=episode&season=${episode.seasonOrder || 1}&episode=${episode.episode_number}&filename=${encodeURIComponent(filename)}`);
                                       const data = await response.json();
-                                      
+
                                       if (data.downloadUrl) {
                                         setIOSDownloadInfo({
                                           url: data.downloadUrl,

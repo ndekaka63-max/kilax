@@ -5,8 +5,8 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: NextRequest) {
   try {
-  const body = await request.json();
-  const { userId, phoneNumber, amount, description, externalReference, accessToken } = body;
+    const body = await request.json();
+    const { userId, phoneNumber, amount, description, externalReference, accessToken } = body;
 
     // Validate required fields
     if (!userId || !phoneNumber || !amount || !description) {

@@ -153,9 +153,9 @@ export default function SeriesDetailsPage() {
               const seasonNumbers = series.seasons && series.seasons.length > 0
                 ? Array.from(new Set(series.seasons.map((s: any) => s.season_number).filter(Boolean))) as number[]
                 : Array.from({ length: series.no_of_seasons || series.number_of_seasons || 1 }, (_, i) => i + 1);
-              
+
               if (seasonNumbers.length <= 1) return null;
-              
+
               return (
                 <div className="flex flex-wrap gap-2">
                   {seasonNumbers.sort((a, b) => a - b).map((num) => (
@@ -173,88 +173,88 @@ export default function SeriesDetailsPage() {
               );
             })()}
           </div>
-          
+
           {episodes.length === 0 ? (
             <div className="text-gray-400 py-8 text-center bg-gray-900 rounded-lg border border-gray-800">
               No episodes found for Season {selectedSeason}.
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {episodes.map((episode) => (
-              <div 
-                key={episode.id} 
-                className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-700 cursor-pointer transition group flex flex-col"
-                onClick={() => handleWatch(episode.episode_number)}
-              >
-                {/* Episode Thumbnail - Top */}
-                <div className="w-full relative bg-gray-900">
-                  <div className="aspect-video relative">
-                    <img
-                      src={
-                        episode.thumbnail_url ||
-                        episode.poster_url ||
-                        episode.poster_path ||
-                        episode.cover_image_url ||
-                        episode.backdrop_url ||
-                        series.thumbnail_url ||
-                        series.poster_path ||
-                        `https://via.placeholder.com/320x180/1f2937/f97316?text=Episode+${episode.episode_number}`
-                      }
-                      alt={`Episode ${episode.episode_number}`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = `https://via.placeholder.com/320x180/1f2937/f97316?text=Episode+${episode.episode_number}`;
-                      }}
-                    />
-                    {/* Hover overlay with play and download buttons (always visible on mobile) */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-100 md:opacity-0 group-hover:opacity-100 transition gap-2">
-                      <button 
-                        className="w-12 h-12 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleWatch(episode.episode_number);
+              {episodes.map((episode) => (
+                <div
+                  key={episode.id}
+                  className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-700 cursor-pointer transition group flex flex-col"
+                  onClick={() => handleWatch(episode.episode_number)}
+                >
+                  {/* Episode Thumbnail - Top */}
+                  <div className="w-full relative bg-gray-900">
+                    <div className="aspect-video relative">
+                      <img
+                        src={
+                          episode.thumbnail_url ||
+                          episode.poster_url ||
+                          episode.poster_path ||
+                          episode.cover_image_url ||
+                          episode.backdrop_url ||
+                          series.thumbnail_url ||
+                          series.poster_path ||
+                          `https://via.placeholder.com/320x180/1f2937/f97316?text=Episode+${episode.episode_number}`
+                        }
+                        alt={`Episode ${episode.episode_number}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = `https://via.placeholder.com/320x180/1f2937/f97316?text=Episode+${episode.episode_number}`;
                         }}
-                        title="Watch"
-                      >
-                        <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      </button>
-                      <button 
-                        className="w-12 h-12 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownload(episode);
-                        }}
-                        title="Download"
-                      >
-                        <Download className="w-5 h-5 text-white" />
-                      </button>
-                    </div>
-                    {/* Episode number badge */}
-                    <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-bold">
-                      {episode.episode_number}
+                      />
+                      {/* Hover overlay with play and download buttons (always visible on mobile) */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-100 md:opacity-0 group-hover:opacity-100 transition gap-2">
+                        <button
+                          className="w-12 h-12 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleWatch(episode.episode_number);
+                          }}
+                          title="Watch"
+                        >
+                          <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </button>
+                        <button
+                          className="w-12 h-12 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(episode);
+                          }}
+                          title="Download"
+                        >
+                          <Download className="w-5 h-5 text-white" />
+                        </button>
+                      </div>
+                      {/* Episode number badge */}
+                      <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-bold">
+                        {episode.episode_number}
+                      </div>
                     </div>
                   </div>
+
+                  {/* Episode Info - Bottom */}
+                  <div className="p-3 flex flex-col flex-1">
+                    <h3 className="font-semibold text-sm mb-1 line-clamp-2">
+                      {episode.title || episode.name || `Episode ${episode.episode_number}`}
+                    </h3>
+                    {episode.description && (
+                      <p className="text-xs text-gray-400 line-clamp-2">{episode.description}</p>
+                    )}
+                  </div>
                 </div>
-                
-                {/* Episode Info - Bottom */}
-                <div className="p-3 flex flex-col flex-1">
-                  <h3 className="font-semibold text-sm mb-1 line-clamp-2">
-                    {episode.title || episode.name || `Episode ${episode.episode_number}`}
-                  </h3>
-                  {episode.description && (
-                    <p className="text-xs text-gray-400 line-clamp-2">{episode.description}</p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
           )}
         </div>
       )}
-      
+
       <div className="container mx-auto px-6 mt-12 pb-12">
         <h2 className="text-2xl font-bold mb-6">Related Series</h2>
         {related.length > 0 ? (

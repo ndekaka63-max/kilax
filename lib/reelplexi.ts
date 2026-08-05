@@ -14,10 +14,10 @@ class ReelplexiError extends Error {
 async function fetchReelplexi(endpoint: string, params: Record<string, string | number> = {}) {
   let origin = '';
   if (!isServer) {
-    origin = window.location.origin || (window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port: ''));
+    origin = window.location.origin || (window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port : ''));
   }
   const urlString = isServer ? `${REELPLEXI_BASE_URL}${endpoint}` : `${origin}${REELPLEXI_BASE_URL}${endpoint}`;
-  
+
   let queryString = '';
   const paramKeys = Object.keys(params);
   if (paramKeys.length > 0) {
@@ -52,7 +52,7 @@ async function fetchReelplexi(endpoint: string, params: Record<string, string | 
             xhr.setRequestHeader(k, headers[k]);
           }
         }
-        xhr.onload = function() {
+        xhr.onload = function () {
           resolve({
             ok: xhr.status >= 200 && xhr.status < 300,
             status: xhr.status,
@@ -66,7 +66,7 @@ async function fetchReelplexi(endpoint: string, params: Record<string, string | 
             }
           });
         };
-        xhr.onerror = function() {
+        xhr.onerror = function () {
           reject(new Error('Network request failed'));
         };
         xhr.send();
@@ -82,8 +82,8 @@ async function fetchReelplexi(endpoint: string, params: Record<string, string | 
     try {
       const body = JSON.parse(text);
       if (body.detail) {
-        const detailMsg = typeof body.detail === 'string' 
-          ? body.detail 
+        const detailMsg = typeof body.detail === 'string'
+          ? body.detail
           : (body.detail.error?.message || JSON.stringify(body.detail));
         throw new ReelplexiError(res.status, `Reelplexi API error (HTTP ${res.status}): ${detailMsg}`);
       }
@@ -108,7 +108,7 @@ const yearToDate = (year: any) => (year ? `${year}-01-01` : undefined);
 function extractVjName(raw: any): string | null {
   const direct = asString(raw.vj_name) || asString(raw.vj) || asString(raw.translator);
   if (direct) return direct;
-  
+
   const versions = raw.available_vj_versions;
   if (Array.isArray(versions) && versions.length > 0 && typeof versions[0] === 'object') {
     return asString(versions[0].vj_name) || asString(versions[0].name) || null;
@@ -127,7 +127,7 @@ export function normalizeReelplexiMovie(raw: any): any {
   const vjName = extractVjName(raw);
   const posterUrl = asString(raw.poster_url) || asString(raw.thumbnail_url) || '';
   const backdropUrl = asString(raw.backdrop_url) || posterUrl;
-  
+
   return {
     id: asString(raw.id) || '',
     title: asString(raw.title) || asString(raw.name) || 'Untitled',

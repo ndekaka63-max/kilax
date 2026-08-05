@@ -171,31 +171,31 @@ export default function HomePage() {
         setLatestMovies(latestMoviesResult.data);
         setLatestSeries(latestSeriesResult.data);
         setKilaxExclusive(kilaxExclusiveData);
-        
+
         let finalGenreRows = genreRows;
         // If API returned no genres, try to build some from the content we just fetched
         if (!finalGenreRows || finalGenreRows.length === 0) {
-           const allContent = [...latestMoviesResult.data, ...latestSeriesResult.data, ...kilaxExclusiveData];
-           const genreMap = new Map<string, any[]>();
-           allContent.forEach(item => {
-             if (item.genres && Array.isArray(item.genres)) {
-               item.genres.forEach((g: string) => {
-                 if (!genreMap.has(g)) genreMap.set(g, []);
-                 if (!genreMap.get(g)!.find(existing => existing.id === item.id)) {
-                   genreMap.get(g)!.push(item);
-                 }
-               });
-             }
-           });
-           
-           // Convert map to array and sort by number of items
-           const extractedGenres = Array.from(genreMap.entries())
-             .map(([name, movies]) => ({ name, movies }))
-             .sort((a, b) => b.movies.length - a.movies.length)
-             .slice(0, 3); // Take top 3
-             
-           // Only keep genres with at least 2 items to make it look like a row
-           finalGenreRows = extractedGenres.filter(g => g.movies.length >= 2);
+          const allContent = [...latestMoviesResult.data, ...latestSeriesResult.data, ...kilaxExclusiveData];
+          const genreMap = new Map<string, any[]>();
+          allContent.forEach(item => {
+            if (item.genres && Array.isArray(item.genres)) {
+              item.genres.forEach((g: string) => {
+                if (!genreMap.has(g)) genreMap.set(g, []);
+                if (!genreMap.get(g)!.find(existing => existing.id === item.id)) {
+                  genreMap.get(g)!.push(item);
+                }
+              });
+            }
+          });
+
+          // Convert map to array and sort by number of items
+          const extractedGenres = Array.from(genreMap.entries())
+            .map(([name, movies]) => ({ name, movies }))
+            .sort((a, b) => b.movies.length - a.movies.length)
+            .slice(0, 3); // Take top 3
+
+          // Only keep genres with at least 2 items to make it look like a row
+          finalGenreRows = extractedGenres.filter(g => g.movies.length >= 2);
         }
 
         setGenreRows(finalGenreRows);

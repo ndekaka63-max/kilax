@@ -151,20 +151,20 @@ function PaymentPageContent() {
       let finalResult = null;
       let attempts = 0;
       const maxAttempts = 30; // 30 * 3s = 90 seconds timeout
-      
+
       while (attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 3000));
-        
+
         const pollResponse = await fetch(`/api/makypay/status?transactionId=${result.uuid}`);
         const pollData = await pollResponse.json();
-        
+
         if (!pollResponse.ok) throw new Error(pollData.error || 'Failed to check payment status');
 
         if (pollData.status === 'completed' || pollData.status === 'sandbox' || pollData.status === 'failed' || pollData.status === 'cancelled') {
           finalResult = pollData;
           break;
         }
-        
+
         attempts++;
       }
 

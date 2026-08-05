@@ -144,7 +144,7 @@ export default function MovieDetailsPage() {
         onDownload={handleDownload}
         primaryColor="#f97316"
       />
-      
+
       <div className="container mx-auto px-6 mt-12">
         <h2 className="text-2xl font-bold mb-6">Related Movies</h2>
         <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
@@ -190,7 +190,6 @@ export default function MovieDetailsPage() {
           </div>
         </div>
       )}
-
       <PremiumUpgradeModal
         isOpen={showPremiumUpgradeModal}
         onClose={() => setShowPremiumUpgradeModal(false)}

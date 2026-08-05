@@ -83,10 +83,10 @@ export default function SearchPage() {
         searchMovies(query, 15),
         searchSeries(query, 15)
       ])
-      
+
       setMovies(movieResults as any)
       setSeries(seriesResults as any)
-      
+
       // Start TMDB searches in parallel (these are slower)
       const tmdbPromises = [
         fetch(`/api/anime/search?q=${encodeURIComponent(query)}`, {
@@ -167,7 +167,7 @@ export default function SearchPage() {
       <div className="container mx-auto px-2 sm:px-4 py-8 flex-1">
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-6">Search</h1>
-          
+
           <div className="relative mb-6">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <Input
@@ -193,44 +193,40 @@ export default function SearchPage() {
               <Button
                 variant="ghost"
                 onClick={() => setActiveTab("all")}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  activeTab === "all"
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${activeTab === "all"
                     ? "bg-orange-500 text-white shadow-lg shadow-orange-500/25"
                     : "bg-gray-800 text-gray-300 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500/50 border border-gray-700"
-                }`}
+                  }`}
               >
                 All ({totalResults})
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => setActiveTab("movies-translated")}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  activeTab === "movies-translated"
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${activeTab === "movies-translated"
                     ? "bg-orange-500 text-white shadow-lg shadow-orange-500/25"
                     : "bg-gray-800 text-gray-300 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500/50 border border-gray-700"
-                }`}
+                  }`}
               >
                 Movies Translated ({movies.length})
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => setActiveTab("series-translated")}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  activeTab === "series-translated"
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${activeTab === "series-translated"
                     ? "bg-orange-500 text-white shadow-lg shadow-orange-500/25"
                     : "bg-gray-800 text-gray-300 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500/50 border border-gray-700"
-                }`}
+                  }`}
               >
                 Series Translated ({series.length})
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => setActiveTab("non-translated")}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  activeTab === "non-translated"
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${activeTab === "non-translated"
                     ? "bg-orange-500 text-white shadow-lg shadow-orange-500/25"
                     : "bg-gray-800 text-gray-300 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500/50 border border-gray-700"
-                }`}
+                  }`}
               >
                 Non-Translated ({nonTranslatedTotal})
               </Button>
@@ -335,7 +331,7 @@ export default function SearchPage() {
                       isNonTranslated={true}
                     />
                   ))}
-                  
+
                   {/* English Series */}
                   {filteredEnglishSeries.map((seriesItem) => (
                     <NetflixCard
@@ -351,7 +347,7 @@ export default function SearchPage() {
                       isNonTranslated={true}
                     />
                   ))}
-                  
+
                   {/* Anime */}
                   {filteredAnime.map((animeItem) => (
                     <NetflixCard
@@ -393,7 +389,7 @@ export default function SearchPage() {
                       isNonTranslated={true}
                     />
                   ))}
-                  
+
                   {/* English Series */}
                   {filteredEnglishSeries.map((seriesItem) => (
                     <NetflixCard
@@ -409,7 +405,7 @@ export default function SearchPage() {
                       isNonTranslated={true}
                     />
                   ))}
-                  
+
                   {/* Anime */}
                   {filteredAnime.map((animeItem) => (
                     <NetflixCard

@@ -24,7 +24,7 @@ function isAllowedVideoUrl(urlString: string): boolean {
   try {
     const url = new URL(urlString);
     const hostname = url.hostname.toLowerCase();
-    
+
     console.log('isAllowedVideoUrl: Parsed hostname:', hostname);
     console.log('isAllowedVideoUrl: Protocol:', url.protocol);
 
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
   try {
     // Apply protection middleware
     const protection = await protectVideoEndpoint(request);
-    
+
     if (!protection.allowed) {
       console.error('Stream API: Protection denied:', protection.error);
       return NextResponse.json(
@@ -185,7 +185,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Stream API: Internal error:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });

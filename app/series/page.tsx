@@ -45,7 +45,7 @@ export default function SeriesPage() {
 
   const loadMoreSeries = useCallback(async () => {
     if (loading || !hasMore || searchQuery || selectedVJ) return;
-    
+
     setLoading(true);
     try {
       const { data: seriesData, hasMore: more } = await getSeriesClient(page, 50);
@@ -231,48 +231,48 @@ export default function SeriesPage() {
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-x-2 gap-y-4">
             {series.map((show) => (
               <div key={show.id} className="group">
-              <Link href={`/series/${show.id}`}>
-                <div className="cursor-pointer transition-transform duration-200 hover:scale-105">
-                  <div className="aspect-[2/3] relative rounded-lg overflow-hidden bg-gray-800 mb-2">
-                    <Image
-                      src={show.thumbnail_url || show.cover_image_url || `https://via.placeholder.com/240x360/1f2937/f97316?text=${encodeURIComponent(show.title)}`}
-                      alt={show.title}
-                      fill
-                      unoptimized
-                      className="object-cover transition-opacity duration-300"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = `https://via.placeholder.com/240x360/1f2937/f97316?text=${encodeURIComponent(show.title)}`;
-                      }}
-                    />
+                <Link href={`/series/${show.id}`}>
+                  <div className="cursor-pointer transition-transform duration-200 hover:scale-105">
+                    <div className="aspect-[2/3] relative rounded-lg overflow-hidden bg-gray-800 mb-2">
+                      <Image
+                        src={show.thumbnail_url || show.cover_image_url || `https://via.placeholder.com/240x360/1f2937/f97316?text=${encodeURIComponent(show.title)}`}
+                        alt={show.title}
+                        fill
+                        unoptimized
+                        className="object-cover transition-opacity duration-300"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = `https://via.placeholder.com/240x360/1f2937/f97316?text=${encodeURIComponent(show.title)}`;
+                        }}
+                      />
 
-                    <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#1ABC9C]">
-                      Series
-                    </div>
+                      <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#1ABC9C]">
+                        Series
+                      </div>
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
-                      <div className="text-white text-xs font-semibold">Watch Now</div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
+                        <div className="text-white text-xs font-semibold">Watch Now</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
 
-              <div className="space-y-0.5">
-                <h3 className="font-medium text-white text-xs truncate leading-tight">{show.title}</h3>
-                <div className="flex items-center gap-1 text-[10px] text-gray-400">
-                  {show.vjs && (
-                    <span className="text-orange-400">{show.vjs.name}</span>
-                  )}
-                  {show.vjs && (show.release_date || show.first_air_date) && (
-                    <span>•</span>
-                  )}
-                  {(show.release_date || show.first_air_date) && (
-                    <span>{new Date(show.release_date || show.first_air_date || '').getFullYear()}</span>
-                  )}
+                <div className="space-y-0.5">
+                  <h3 className="font-medium text-white text-xs truncate leading-tight">{show.title}</h3>
+                  <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                    {show.vjs && (
+                      <span className="text-orange-400">{show.vjs.name}</span>
+                    )}
+                    {show.vjs && (show.release_date || show.first_air_date) && (
+                      <span>•</span>
+                    )}
+                    {(show.release_date || show.first_air_date) && (
+                      <span>{new Date(show.release_date || show.first_air_date || '').getFullYear()}</span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
           </div>
         )}
 
