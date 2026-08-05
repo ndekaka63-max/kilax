@@ -1,4 +1,5 @@
 import { supabase, Movie, Series, Genre } from './supabase'
+import * as Reelplexi from './reelplexi'
 
 // Movies API - Enhanced with video URLs and watchable content
 export async function getMovies(limit = 20) {
@@ -134,6 +135,24 @@ export async function getSeries(limit = 20) {
   }));
 
   return result as Series[]
+}
+
+export async function getMovieStream(id: string) {
+  try {
+    return await Reelplexi.getReelplexiMovieStream(id)
+  } catch (error) {
+    console.error(`Error fetching movie stream ${id}:`, error)
+    return null
+  }
+}
+
+export async function getEpisodeStream(seriesId: string, season: number, episode: number) {
+  try {
+    return await Reelplexi.getReelplexiEpisodeStream(seriesId, season, episode)
+  } catch (error) {
+    console.error(`Error fetching stream for series ${seriesId} season ${season} episode ${episode}:`, error)
+    return null
+  }
 }
 
 // Translated Content (content without VJs) - Enhanced with video URLs
