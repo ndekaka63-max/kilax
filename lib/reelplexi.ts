@@ -79,7 +79,10 @@ async function fetchReelplexi(endpoint: string, params: Record<string, string | 
     console.error('Reelplexi request failed', {
       endpoint,
       fullUrl,
+      isServer,
+      hasApiKey: Boolean(REELPLEXI_API_KEY),
       status: res.status,
+      statusText: res.statusText,
       responseText: text
     })
     throw new ReelplexiError(res.status, `HTTP error ${res.status}: ${text.substring(0, 150)}`)

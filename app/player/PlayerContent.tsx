@@ -11,7 +11,6 @@ import { useAuth } from '@/components/AuthProvider';
 import AuthRequiredModal, { useAuthCheck } from '@/components/AuthRequiredModal';
 import { getProfile, Profile } from '@/lib/profiles';
 import { Episode, EpisodeWithSeason } from '@/lib/supabase';
-import { getMovieStream, getEpisodeStream } from '@/lib/api';
 
 export default function PlayerContent() {
   const searchParams = useSearchParams();
@@ -111,7 +110,6 @@ export default function PlayerContent() {
         let videoUrl = '';
         let contentTitle = '';
         let contentInfo: any = null;
-        let seasonOrder = 1;
 
         if (contentType === 'movie') {
           // Fetch movie video URL
@@ -186,8 +184,6 @@ export default function PlayerContent() {
             } else {
               seriesId = season.series_id;
             }
-
-            seasonOrder = season.order || 1;
           }
 
           contentInfo = episode;
@@ -220,22 +216,8 @@ export default function PlayerContent() {
           throw new Error('No video URL available');
         }
 
-        let finalStreamUrl: string | null = null;
-        if (contentType === 'movie') {
-          const streamData = await getMovieStream(contentId);
-          finalStreamUrl = streamData?.video_url || null;
-        } else {
-          const streamData = await getEpisodeStream(seriesId || contentId, seasonOrder, contentInfo.episode_number);
-          finalStreamUrl = streamData?.video_url || null;
-        }
-
-        if (!finalStreamUrl) {
-          // Fallback to the authenticated file proxy for raw URLs.
-          finalStreamUrl = buildStreamProxyUrl(videoUrl);
-        }
-
         streamFetchedRef.current = fetchKey;
-        setStreamUrl(finalStreamUrl);
+        setStreamUrl(buildStreamProxyUrl(videoUrl));
         setTitle(contentTitle);
         setLoading(false);
 

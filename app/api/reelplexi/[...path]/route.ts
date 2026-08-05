@@ -8,8 +8,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
   const path = resolvedParams.path.join('/')
   const searchParams = req.nextUrl.searchParams.toString()
   const url = `${REELPLEXI_BASE_URL}/${path}${searchParams ? `?${searchParams}` : ''}`
+  const hasApiKey = Boolean(REELPLEXI_API_KEY)
 
   try {
+    console.log('Reelplexi API proxy request', {
+      url,
+      hasApiKey,
+      keyLength: REELPLEXI_API_KEY.length
+    })
+
     const res = await fetch(url, {
       headers: {
         'X-API-Key': REELPLEXI_API_KEY,
@@ -25,10 +32,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
         console.error('Reelplexi API proxy failed with JSON response', {
           url,
           status: res.status,
+          statusText: res.statusText,
+          hasApiKey,
           data
         })
       }
-      return NextResponse.json(data, { status: res.status })
+      return NextResponse.json({
+        ...data,
+        _debug: {
+          url,
+          status: res.status,
+          statusText: res.statusText,
+          hasApiKey
+        }
+      }, { status: res.status })
     }
 
     const data = await res.text()
@@ -36,6 +53,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
       console.error('Reelplexi API proxy failed with text response', {
         url,
         status: res.status,
+        statusText: res.statusText,
+        hasApiKey,
         body: data
       })
     }
@@ -48,10 +67,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
   } catch (error: any) {
     console.error('Reelplexi API proxy internal error', {
       url,
+      hasApiKey,
       error,
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     })
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({
+      error: 'Reelplexi proxy internal error',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      _debug: {
+        url,
+        hasApiKey,
+        keyLength: REELPLEXI_API_KEY.length
+      }
+    }, { status: 500 })
   }
 }
